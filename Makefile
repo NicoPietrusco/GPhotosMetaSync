@@ -1,7 +1,7 @@
 # Makefile for GPhotoMetaSync
 # Note: Make requires TAB characters for indentation
 
-.PHONY: help run gui cli install clean lint format setup
+.PHONY: help run gui cli setup clean lint format extract embed clean-all
 
 help:
 	@echo "GPhotoMetaSync - Available Commands:"
@@ -9,8 +9,7 @@ help:
 	@echo "  make run         - Launch the GUI application"
 	@echo "  make gui         - Launch the GUI application"
 	@echo "  make cli         - Run CLI"
-	@echo "  make install     - Install dependencies with uv"
-	@echo "  make setup       - Setup virtual environment"
+	@echo "  make setup       - First-time setup (create venv + install)"
 	@echo "  make lint        - Run linter (ruff)"
 	@echo "  make format      - Format code with ruff"
 	@echo "  make clean       - Remove cache files"
@@ -40,7 +39,7 @@ setup:
 
 lint:
 	@echo "🔍 Running linter..."
-	@source .venv/bin/activate && ruff check src/
+	@source .venv/bin/activate && ruff check --fix src/
 
 format:
 	@echo "✨ Formatting code..."
