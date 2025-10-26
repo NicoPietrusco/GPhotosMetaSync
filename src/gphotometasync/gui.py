@@ -138,7 +138,9 @@ class GPhotoMetaSyncGUI:
     def create_file_section(self, parent):
         """Create the file selection section."""
         file_frame = ttk.LabelFrame(parent, text="📁 File Selection", padding="10")
-        file_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        file_frame.grid(
+            row=1, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10)
+        )
         file_frame.columnconfigure(0, weight=1)
         file_frame.rowconfigure(0, weight=1)
 
@@ -171,8 +173,11 @@ class GPhotoMetaSyncGUI:
         button_frame.grid(row=1, column=0, columnspan=2, pady=(5, 0), sticky=tk.W)
 
         select_files_btn = ttk.Button(
-            button_frame, text="📂 Select Files", command=self.select_files, 
-            style="Action.TButton", cursor="hand2"
+            button_frame,
+            text="📂 Select Files",
+            command=self.select_files,
+            style="Action.TButton",
+            cursor="hand2",
         )
         select_files_btn.grid(row=0, column=0, padx=(0, 10))
 
@@ -181,11 +186,13 @@ class GPhotoMetaSyncGUI:
             text="📁 Select Directory",
             command=self.select_directory,
             style="Action.TButton",
-            cursor="hand2"
+            cursor="hand2",
         )
         select_dir_btn.grid(row=0, column=1, padx=(0, 10))
 
-        clear_btn = ttk.Button(button_frame, text="🗑️ Clear", command=self.clear_files, cursor="hand2")
+        clear_btn = ttk.Button(
+            button_frame, text="🗑️ Clear", command=self.clear_files, cursor="hand2"
+        )
         clear_btn.grid(row=0, column=2)
 
     def create_options_section(self, parent):
@@ -204,10 +211,7 @@ class GPhotoMetaSyncGUI:
         output_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=5, padx=(10, 5))
 
         browse_btn = ttk.Button(
-            options_frame, 
-            text="📁 Browse", 
-            command=self.select_output_directory,
-            cursor="hand2"
+            options_frame, text="📁 Browse", command=self.select_output_directory, cursor="hand2"
         )
         browse_btn.grid(row=0, column=2, pady=5)
 
@@ -228,7 +232,7 @@ class GPhotoMetaSyncGUI:
             text="📊 Extract EXIF Data",
             command=lambda: self.start_processing("extract"),
             style="Action.TButton",
-            cursor="hand2"
+            cursor="hand2",
         )
         self.extract_btn.grid(row=0, column=0, padx=(0, 10))
 
@@ -237,7 +241,7 @@ class GPhotoMetaSyncGUI:
             text="📅 Embed EXIF Dates",
             command=lambda: self.start_processing("embed"),
             style="Action.TButton",
-            cursor="hand2"
+            cursor="hand2",
         )
         self.embed_btn.grid(row=0, column=1)
 
@@ -293,7 +297,9 @@ class GPhotoMetaSyncGUI:
         summary_frame.rowconfigure(0, weight=1)
 
         # Clear button
-        clear_btn = ttk.Button(results_frame, text="🗑️ Clear Results", command=self.clear_results, cursor="hand2")
+        clear_btn = ttk.Button(
+            results_frame, text="🗑️ Clear Results", command=self.clear_results, cursor="hand2"
+        )
         clear_btn.grid(row=1, column=0, pady=(10, 0), sticky=tk.W)
 
     def select_files(self):
@@ -336,7 +342,9 @@ class GPhotoMetaSyncGUI:
         """Select output directory for processed files."""
         directory = filedialog.askdirectory(
             title="Select Output Directory",
-            initialdir=self.output_dir_var.get() if Path(self.output_dir_var.get()).exists() else "."
+            initialdir=self.output_dir_var.get()
+            if Path(self.output_dir_var.get()).exists()
+            else ".",
         )
 
         if directory:
@@ -468,26 +476,32 @@ class ProcessingThread(threading.Thread):
         try:
             # Send initial progress and log
             self.message_queue.put(("progress", (10, f"Starting {self.action} process...")))
-            self.message_queue.put(("log", f"🚀 Starting {self.action} for {len(self.files)} file(s)"))
+            self.message_queue.put(
+                ("log", f"🚀 Starting {self.action} for {len(self.files)} file(s)")
+            )
             self.message_queue.put(("log", f"📂 Output directory: {self.output_dir}"))
-            
+
             if self.action == "extract":
                 self.message_queue.put(("log", "📊 Extracting EXIF data..."))
                 success_count, failed_files = self._process_extract()
-                message = self._build_summary_message("extract", success_count, len(self.files), failed_files)
+                message = self._build_summary_message(
+                    "extract", success_count, len(self.files), failed_files
+                )
                 success = success_count > 0
 
             elif self.action == "embed":
                 self.message_queue.put(("log", "📅 Embedding EXIF dates..."))
                 success_count, failed_files = self._process_embed()
-                message = self._build_summary_message("embed", success_count, len(self.files), failed_files)
+                message = self._build_summary_message(
+                    "embed", success_count, len(self.files), failed_files
+                )
                 success = success_count > 0
 
             else:
                 raise ValueError(f"Unknown action: {self.action}")
 
             # Send completion message
-            self.message_queue.put(("log", message.split('\n')[0]))  # First line to log
+            self.message_queue.put(("log", message.split("\n")[0]))  # First line to log
             self.message_queue.put(("finished", (message, success)))
 
         except Exception as e:
@@ -495,106 +509,120 @@ class ProcessingThread(threading.Thread):
             self.logger.error(error_msg)
             self.message_queue.put(("log", error_msg))
             self.message_queue.put(("finished", (error_msg, False)))
-    
+
     def _build_summary_message(self, action, success_count, total, failed_files):
         """Build a comprehensive summary message."""
-        action_text = "extracted EXIF data from" if action == "extract" else "embedded EXIF dates for"
-        
+        action_text = (
+            "extracted EXIF data from" if action == "extract" else "embedded EXIF dates for"
+        )
+
         message = f"✅ Successfully {action_text} {success_count}/{total} images\n"
-        message += f"\n📊 Processing Summary:\n"
+        message += "\n📊 Processing Summary:\n"
         message += f"   • Total files: {total}\n"
         message += f"   • Successful: {success_count}\n"
         message += f"   • Failed: {len(failed_files)}\n"
-        
+
         if failed_files:
-            message += f"\n⚠️  Failed Images:\n"
+            message += "\n⚠️  Failed Images:\n"
             for filename in failed_files:
                 message += f"   • {filename}\n"
-        
+
         message += f"\n📂 Output location: {self.output_dir}"
-        
+
         return message
-    
+
     def _process_extract(self):
         """Process files for EXIF extraction with progress updates."""
-        from .core.exif_utils import extract_exif_data
         from pathlib import Path
-        
+
+        from .core.exif_utils import extract_exif_data
+
         total = len(self.files)
         success_count = 0
         failed_files = []
-        
+
         for i, img_path in enumerate(self.files, 1):
             # Update progress
             progress = int(10 + (80 * i / total))
-            self.message_queue.put(("progress", (progress, f"Processing {i}/{total}: {img_path.name}")))
-            
+            self.message_queue.put(
+                ("progress", (progress, f"Processing {i}/{total}: {img_path.name}"))
+            )
+
             # Log current file
             self.message_queue.put(("log", f"  [{i}/{total}] Processing: {img_path.name}"))
-            
+
             # Extract EXIF
             result = extract_exif_data(img_path, Path(self.output_dir))
-            
+
             if "error" in result:
                 self.message_queue.put(("log", f"    ❌ Error: {result['error']}"))
                 failed_files.append(img_path.name)
             else:
                 success_count += 1
                 if self.verbose:
-                    self.message_queue.put(("log", f"    ✅ Extracted {result['exif_fields_count']} fields"))
-        
+                    self.message_queue.put(
+                        ("log", f"    ✅ Extracted {result['exif_fields_count']} fields")
+                    )
+
         # Final progress
         self.message_queue.put(("progress", (100, "Complete!")))
-        self.message_queue.put(("log", f"📊 Summary: {success_count}/{total} images processed successfully"))
-        
+        self.message_queue.put(
+            ("log", f"📊 Summary: {success_count}/{total} images processed successfully")
+        )
+
         # List failed files if any
         if failed_files:
-            self.message_queue.put(("log", f""))
+            self.message_queue.put(("log", ""))
             self.message_queue.put(("log", f"❌ Failed images ({len(failed_files)}):"))
             for filename in failed_files:
                 self.message_queue.put(("log", f"   • {filename}"))
-        
+
         return success_count, failed_files
-    
+
     def _process_embed(self):
         """Process files for EXIF embedding with progress updates."""
-        from .core.exif_utils import embed_exif_dates
         from pathlib import Path
-        
+
+        from .core.exif_utils import embed_exif_dates
+
         total = len(self.files)
         success_count = 0
         failed_files = []
-        
+
         for i, img_path in enumerate(self.files, 1):
             # Update progress
             progress = int(10 + (80 * i / total))
-            self.message_queue.put(("progress", (progress, f"Processing {i}/{total}: {img_path.name}")))
-            
+            self.message_queue.put(
+                ("progress", (progress, f"Processing {i}/{total}: {img_path.name}"))
+            )
+
             # Log current file
             self.message_queue.put(("log", f"  [{i}/{total}] Processing: {img_path.name}"))
-            
+
             # Embed EXIF dates
             success = embed_exif_dates(img_path, Path(self.output_dir))
-            
+
             if success:
                 success_count += 1
                 if self.verbose:
-                    self.message_queue.put(("log", f"    ✅ Dates embedded successfully"))
+                    self.message_queue.put(("log", "    ✅ Dates embedded successfully"))
             else:
-                self.message_queue.put(("log", f"    ⚠️  No EXIF dates found or processing failed"))
+                self.message_queue.put(("log", "    ⚠️  No EXIF dates found or processing failed"))
                 failed_files.append(img_path.name)
-        
+
         # Final progress
         self.message_queue.put(("progress", (100, "Complete!")))
-        self.message_queue.put(("log", f"📊 Summary: {success_count}/{total} images processed successfully"))
-        
+        self.message_queue.put(
+            ("log", f"📊 Summary: {success_count}/{total} images processed successfully")
+        )
+
         # List failed files if any
         if failed_files:
-            self.message_queue.put(("log", f""))
+            self.message_queue.put(("log", ""))
             self.message_queue.put(("log", f"⚠️  Images without EXIF dates ({len(failed_files)}):"))
             for filename in failed_files:
                 self.message_queue.put(("log", f"   • {filename}"))
-        
+
         return success_count, failed_files
 
 
