@@ -25,7 +25,7 @@ A powerful Python tool for extracting, analyzing, and embedding EXIF metadata fr
 - [Usage](#-usage)
   - [Desktop GUI](#desktop-gui)
   - [Command Line](#command-line-interface)
-  - [Makefile Commands](#makefile-commands)
+  - [Justfile commands](#justfile-commands)
 - [Supported Formats](#-supported-formats)
 - [Documentation](#-documentation)
 - [Development](#-development)
@@ -67,119 +67,75 @@ A powerful Python tool for extracting, analyzing, and embedding EXIF metadata fr
 
 ### Prerequisites
 - Python 3.11 or higher
-- Tkinter (for GUI) - Usually included with Python
+- [uv](https://github.com/astral-sh/uv)
+- [just](https://github.com/casey/just) (optional; for `just setup`, `just web`, etc.)
 
 ### Quick Install
 
 ```bash
-# Clone the repository
 git clone https://github.com/yourusername/GPhotoMetaSync.git
 cd GPhotoMetaSync
 
-# One-command setup (creates venv + installs everything)
-make setup
-
-# That's it! Now launch the GUI:
-make run
+just setup
+just web
 ```
 
 ### Manual Setup (Alternative)
 
 ```bash
-# Create virtual environment
 uv venv --python python3.11 .venv
-
-# Install dependencies
-uv sync
-
-# Launch GUI
-source .venv/bin/activate
-python -m src.gphotometasync.gui
+uv sync --group dev
+uv run gphotometasync
 ```
 
 ---
 
 ## 💻 Usage
 
-### Desktop GUI
-
-The easiest way to use GPhotoMetaSync is through the graphical interface:
+### Web app (Flask)
 
 ```bash
-make run
+just web
 ```
 
-**GUI Features:**
-1. **📁 Select Files/Directory** - Choose images to process
-2. **📂 Browse Output** - Pick where to save results
-3. **📊 Extract EXIF Data** - Save metadata to JSON files
-4. **📅 Embed EXIF Dates** - Restore original timestamps
-5. **📝 Live Logs** - See real-time processing status
-6. **📈 Progress Bar** - Visual feedback during processing
-7. **📊 Summary Report** - Detailed statistics with failed files list
+Open the URL shown in the terminal (default `http://127.0.0.1:5001`). Upload a local image or use **Google Photos** (local desktop OAuth + Photos Picker API), then download the JSON sidecar and the image with embedded EXIF.
 
-**Workflow Example:**
-```
-1. Click "Select Directory" → Choose your photos folder
-2. Click "Browse" → Choose output location (optional)
-3. Click "Extract EXIF Data" or "Embed EXIF Dates"
-4. Watch progress in real-time
-5. Review summary report with success/failure details
-```
+On macOS, if you use port **5000**, **AirPlay Receiver** may answer instead of Flask and you can see **HTTP 403**. The app defaults to **5001**; override with `PORT=5000` in `.env` only if that port is free.
 
-### Command Line Interface
+### Google Photos (local desktop + Picker API)
 
-For automation and scripting (activate venv first):
+This app is meant to run **on your computer only** (not deployed as a public website). **End users** who only have a Google account sign in through the browser; they do **not** need their own Google Cloud project. **Whoever packages or installs the app** completes a **one-time** Cloud setup and adds a **Desktop / Installed** OAuth client JSON file.
+
+Photo access uses the **[Photos Picker API](https://developers.google.com/photos/picker/guides/get-started-picker)** (`photospicker.googleapis.com`). The older Library API scopes are deprecated; picking is done through the Picker flow only.
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), enable **Google Photos Picker API**. Configure the **OAuth consent screen** if you have not already.
+2. Create **Credentials** → **OAuth client ID** → type **Desktop app** (Installed). Download the JSON.
+3. Save it as [`credentials/client_secrets.json`](credentials/) or set `GOOGLE_OAUTH_CLIENT_SECRETS` (see [`.env.example`](.env.example)). Full steps: [`credentials/README.md`](credentials/README.md).
+4. Optional: run `just verify` to confirm the file is found and the app loads.
+5. Run `just web`, click **Sign In** — a local browser window completes **OAuth 2.0** (`InstalledAppFlow`); tokens are stored in `credentials/google_token.json` (gitignored). Then **Select Photos** opens the Google picker. **Process EXIF** runs the pipeline on the server using the same OAuth session.
+
+The app loads `.env` on startup (`python-dotenv`). Because this is a local tool, cookies and tokens stay on your machine.
+
+### Justfile commands
+
+Common tasks are defined in [`justfile`](justfile):
 
 ```bash
-# Activate virtual environment
-source .venv/bin/activate
-
-# Extract EXIF data to JSON files
-python -m src.gphotometasync.main extract photos/ --output metadata/
-
-# Embed EXIF dates into new images
-python -m src.gphotometasync.main embed photos/ --output corrected/
-
-# Use verbose mode for detailed logs
-python -m src.gphotometasync.main extract photos/ --verbose
-```
-
-**Or use the Makefile shortcuts:**
-
-```bash
-make extract    # Extract EXIF from input/ folder
-make embed      # Embed EXIF dates in input/ folder
-```
-
-### Makefile Commands
-
-The project includes a comprehensive Makefile for common tasks:
-
-```bash
-# Main commands
-make run          # Launch GUI application ⭐
-make gui          # Launch GUI (alias)
-
-# CLI shortcuts
-make cli          # Run CLI on input/ folder
-make extract      # Extract EXIF from input/ folder
-make embed        # Embed EXIF dates in input/ folder
-
-# Setup & maintenance
-make setup        # First-time setup (create venv + install)
-make clean        # Remove cache files
-make clean-all    # Remove cache + output files
-
-# Code quality
-make lint         # Run code linter (ruff)
-make format       # Format code with ruff
+just              # list recipes
+just setup        # venv + uv sync (dev group, includes ruff)
+just verify       # check credentials/client_secrets.json + app import
+just web          # run Flask app (same as `just run`)
+just lint         # ruff check
+just format       # ruff format
+just clean        # remove caches
+just clean-all    # caches + data/outputs, data/uploads, output/*
 ```
 
 **Typical workflow:**
+
 ```bash
-make setup    # First time only
-make run      # Daily use
+just setup
+just web
 ```
 
 ---
@@ -264,8 +220,7 @@ GPhotoMetaSync/
 ├── src/
 │   └── gphotometasync/
 │       ├── __init__.py           # Package entry point
-│       ├── main.py               # CLI interface
-│       ├── gui.py                # Desktop GUI (Tkinter)
+│       ├── web/                  # Flask app + templates
 │       ├── settings.py           # Configuration
 │       ├── core/
 │       │   ├── exif_utils.py     # EXIF extraction/embedding
@@ -276,7 +231,7 @@ GPhotoMetaSync/
 ├── input/                        # Sample images
 ├── output/                       # Processing results
 ├── docs/                         # Documentation
-├── Makefile                      # Build automation
+├── justfile                      # Task runner (just)
 ├── pyproject.toml                # Project metadata
 └── README.md                     # This file
 ```
@@ -291,37 +246,31 @@ GPhotoMetaSync/
 # Clone and setup
 git clone https://github.com/yourusername/GPhotoMetaSync.git
 cd GPhotoMetaSync
-make setup
+just setup
 
-# Activate virtual environment
 source .venv/bin/activate
 ```
 
 ### Code Quality
 
 ```bash
-# Lint code
-make lint
-
-# Format code
-make format
-
-# Clean cache
-make clean
+just lint
+just format
+just clean
 ```
 
 ### Architecture
 
 **Core Modules:**
 - `exif_utils.py` - EXIF data extraction, GPS conversion, date embedding
-- `photo_utils.py` - Batch processing, progress tracking, error handling
+- `photo_utils.py` - Upload / pipeline orchestration
 - `file_utils.py` - File discovery, JSON serialization, path management
 - `logger_utils.py` - Centralized logging with loguru
 
 **Design Principles:**
 - Modular architecture with clear separation of concerns
 - Comprehensive error handling and logging
-- Thread-safe GUI with message queues
+- Flask UI with OAuth for Google Photos
 - Extensive type hints for better IDE support
 
 ---
@@ -338,7 +287,7 @@ We welcome contributions! Here's how to get started:
 3. **Make** your changes
 4. **Test** your changes
    ```bash
-   make lint
+   just lint
    pytest
    ```
 5. **Commit** with clear messages
@@ -353,11 +302,11 @@ We welcome contributions! Here's how to get started:
 
 ### Contribution Guidelines
 
-- Follow PEP 8 style guidelines (use `make format`)
-- Run linter before committing (`make lint`)
+- Follow PEP 8 style guidelines (use `just format`)
+- Run linter before committing (`just lint`)
 - Update documentation as needed
 - Keep commits atomic and well-described
-- Test your changes with the GUI and CLI
+- Test your changes with the web app (`just web`)
 
 ---
 
@@ -368,15 +317,18 @@ We welcome contributions! Here's how to get started:
 |---------|---------|
 | [Pillow](https://python-pillow.org/) | Image processing and EXIF handling |
 | [piexif](https://github.com/hMatoba/Piexif) | EXIF manipulation |
-| [Typer](https://typer.tiangolo.com/) | Modern CLI framework |
-| [tqdm](https://tqdm.github.io/) | Progress bars |
-| [loguru](https://loguru.readthedocs.io/) | Enhanced logging |
+| [Flask](https://flask.palletsprojects.com/) | Web UI |
+| [PyYAML](https://pyyaml.org/) | EXIF field config |
+| (Browser) [Google Identity Services](https://developers.google.com/identity/oauth2/web/guides/overview) | OAuth access token for Picker API |
+| [google-auth](https://github.com/googleapis/google-auth-library-python) / [google-auth-oauthlib](https://github.com/googleapis/google-auth-library-python-oauthlib) | OAuth (Installed app) + token refresh |
+| [requests](https://requests.readthedocs.io/) | Picker API HTTP |
+| [loguru](https://loguru.readthedocs.io/) | Logging |
 
 ### Optional Dependencies
 | Package | Purpose |
 |---------|---------|
 | pillow-heif | HEIC/HEIF format support |
-| ruff | Code linting and formatting |
+| ruff | Code linting and formatting (dev group) |
 
 ---
 
@@ -395,8 +347,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - **Image Processing** - [Pillow](https://python-pillow.org/) library
-- **CLI Framework** - [Typer](https://typer.tiangolo.com/) by Sebastián Ramírez
-- **Progress Bars** - [tqdm](https://tqdm.github.io/) library
+- **Web** - [Flask](https://flask.palletsprojects.com/)
+- **Tasks** - [just](https://github.com/casey/just)
 - **Logging** - [loguru](https://loguru.readthedocs.io/) library
 - **EXIF Manipulation** - [piexif](https://github.com/hMatoba/Piexif) by hMatoba
 
