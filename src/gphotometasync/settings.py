@@ -2,6 +2,7 @@
 Application settings and constants for GPhotoMetaSync.
 """
 
+import os
 from pathlib import Path
 from typing import Set
 
@@ -9,10 +10,10 @@ from typing import Set
 class Settings:
     """Application-wide settings and constants."""
 
-    # App info
-    APP_NAME = "GPhotoMetaSync"
+    # App info (shown in the web UI)
+    APP_NAME = "Photo Meta Sync"
     APP_VERSION = "0.1.0"
-    APP_DESCRIPTION = "Google Photos Metadata Synchronizer"
+    APP_DESCRIPTION = "Save dates, camera info, and location from your photos—on this computer or from Google Photos."
 
     # Supported image formats
     SUPPORTED_FORMATS: Set[str] = {
@@ -49,6 +50,44 @@ class Settings:
     # File suffixes
     JSON_SUFFIX = ".json"
     DATED_SUFFIX = "_dated"
+
+    # Web / Flask (override via environment)
+    @property
+    def secret_key(self) -> str:
+        return os.environ.get("SECRET_KEY", "dev-only-change-SECRET_KEY")
+
+    @property
+    def max_upload_mb(self) -> int:
+        return int(os.environ.get("MAX_UPLOAD_MB", "50"))
+
+    @property
+    def web_output_image_suffix(self) -> str:
+        """
+        Suffix appended to image/JSON basenames when "add suffix" is enabled locally.
+        Set to empty in .env to default the UI to overwrite-style names (same basename).
+        """
+        return os.environ.get("WEB_OUTPUT_IMAGE_SUFFIX", "_exif")
+
+    @property
+    def google_oauth_client_secrets_path(self) -> Path:
+        """Desktop OAuth client JSON from Google Cloud (Installed app)."""
+        env = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRETS")
+        if env:
+            return Path(env)
+        return self.base_dir / "credentials" / "client_secrets.json"
+
+    @property
+    def google_token_path(self) -> Path:
+        """Saved OAuth token after first sign-in (local only, gitignored)."""
+        return self.base_dir / "credentials" / "google_token.json"
+
+    @property
+    def upload_dir(self) -> Path:
+        return self.data_dir / "uploads"
+
+    @property
+    def web_output_dir(self) -> Path:
+        return self.data_dir / "outputs"
 
     @property
     def base_dir(self) -> Path:
