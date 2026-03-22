@@ -1,0 +1,33 @@
+# Default EXIF field selection for extract + embed.
+# Use IFD:TagName (piexif names, e.g. Exif:DateTimeOriginal, 0th:Make).
+# mode: "allowlist" keeps only listed tags; "all" keeps everything except exclude_tags.
+
+mode: allowlist
+
+tags:
+  - "0th:Make"
+  - "0th:Model"
+  - "0th:Orientation"
+  - "0th:DateTime"
+  - "Exif:DateTimeOriginal"
+  - "Exif:DateTimeDigitized"
+  - "Exif:ExposureTime"
+  - "Exif:FNumber"
+  - "Exif:ISOSpeedRatings"
+  - "Exif:FocalLength"
+  - "Exif:LensModel"
+  - "Exif:Flash"
+  - "Exif:WhiteBalance"
+  - "Exif:ExifVersion"
+  - "GPS:GPSLatitude"
+  - "GPS:GPSLatitudeRef"
+  - "GPS:GPSLongitude"
+  - "GPS:GPSLongitudeRef"
+  - "GPS:GPSAltitude"
+  - "GPS:GPSAltitudeRef"
+
+# When mode is "all", these tag names (IFD:Tag) are dropped.
+exclude_tags: []
+
+# If true, MakerNote is never embedded (safer for camera-specific blobs).
+skip_makernote_embed: true
