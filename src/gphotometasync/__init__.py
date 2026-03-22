@@ -1,8 +1,7 @@
 """
 GPhotoMetaSync - Google Photos Metadata Synchronizer
 
-A comprehensive tool for extracting, analyzing, and embedding EXIF metadata
-from images, particularly useful for Google Photos workflows.
+Extract and embed EXIF metadata from images (local upload or Google Photos).
 """
 
 __version__ = "0.1.0"
@@ -14,19 +13,11 @@ from .settings import Settings
 settings = Settings()
 
 
-# Import main components (lazy loading to avoid dependency issues)
-def get_cli_app():
-    """Get CLI app (lazy import)."""
-    from .main import app
+def get_web_app():
+    """Get Flask app factory (lazy import)."""
+    from .web import create_app
 
-    return app
-
-
-def get_gui_main():
-    """Get GUI main function (lazy import)."""
-    from .gui import main
-
-    return main
+    return create_app
 
 
 __all__ = [
@@ -34,6 +25,5 @@ __all__ = [
     "__version__",
     "__author__",
     "__description__",
-    "get_cli_app",
-    "get_gui_main",
+    "get_web_app",
 ]

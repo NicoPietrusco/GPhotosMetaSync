@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ settings.APP_NAME }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+  <div class="page">
+    <h1>{{ settings.APP_NAME }}</h1>
+    <p class="app-tagline">{{ settings.APP_DESCRIPTION }}</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block body %}{% endblock %}
+    {% if request.endpoint and request.endpoint != 'index' %}
+    <footer class="site-footer">
+      <a href="{{ url_for('index') }}">← Back to home</a>
+    </footer>
+    {% endif %}
+  </div>
+</body>
+</html>

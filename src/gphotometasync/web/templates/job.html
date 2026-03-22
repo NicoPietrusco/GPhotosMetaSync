@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="section-card">
+  <h2>Your saved files</h2>
+  <p class="job-summary">
+    <strong>{{ file_count }} file(s)</strong> in this batch
+    {% if image_files %}— {{ image_files|length }} image{% if image_files|length != 1 %}s{% endif %}{% endif %}
+    {% if json_files %}… {{ json_files|length }} JSON detail{% if json_files|length != 1 %}s{% endif %}{% endif %}
+    {% if other_files %}… {{ other_files|length }} other{% endif %}
+  </p>
+  {% if file_count %}
+  <script>
+    if (!window.showDirectoryPicker) {
+      document.documentElement.classList.add("no-directory-picker");
+    }
+  </script>
+  <script type="application/json" id="job-download-manifest">{{ download_manifest | tojson }}</script>
+  <p class="job-actions job-actions--save">
+    <button type="button" class="btn btn-primary" id="job-save-all">Save all</button>
+    <a class="btn btn-primary job-save-zip-primary" href="{{ url_for('download_job_zip', job_id=job_id) }}">Save all</a>
+    <span class="job-actions-hint job-hint-fs">Pick a folder once—every file is saved separately (images and JSON), not zipped. Works in Chrome or Edge.</span>
+    <span class="job-actions-hint job-hint-no-fs">This browser saves the batch as one ZIP (single download). Unzip for separate files.</span>
+  </p>
+  <p class="job-zip-optional">
+    <a class="muted" href="{{ url_for('download_job_zip', job_id=job_id) }}">Download as ZIP instead</a>
+  </p>
+  {% endif %}
+  <p class="job-hint">Downloads use the full filename. Lists below scroll when there are many files.</p>
+
+  {% if image_files %}
+  <h3 class="job-section-title">Images</h3>
+  <ul class="job-files job-files--scroll">
+    {% for f in image_files %}
+    <li><a href="{{ url_for('serve_file', job_id=job_id, filename=f.name) }}" title="{{ f.name }}">{{ f.label }}</a></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if json_files %}
+  <details class="job-details-block">
+    <summary>JSON detail files ({{ json_files|length }}) — tap to expand</summary>
+    <ul class="job-files job-files--scroll job-files--compact">
+      {% for f in json_files %}
+      <li><a href="{{ url_for('serve_file', job_id=job_id, filename=f.name) }}" title="{{ f.name }}">{{ f.label }}</a></li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+
+  {% if other_files %}
+  <details class="job-details-block">
+    <summary>Other files ({{ other_files|length }})</summary>
+    <ul class="job-files job-files--scroll job-files--compact">
+      {% for f in other_files %}
+      <li><a href="{{ url_for('serve_file', job_id=job_id, filename=f.name) }}" title="{{ f.name }}">{{ f.label }}</a></li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+
+  {% if not image_files and not json_files and not other_files %}
+  <p class="job-empty">No files found in this folder.</p>
+  {% endif %}
+</section>
+{% if file_count %}
+<script src="{{ url_for('static', filename='js/job_download.js') }}" defer></script>
+{% endif %}
+{% endblock %}
