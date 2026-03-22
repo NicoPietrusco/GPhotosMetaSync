@@ -166,3 +166,8 @@ output/
 *.webp
 *.heic
 *.heif
+
+# Google OAuth (do not commit)
+credentials/client_secrets.json
+credentials/google_token.json
+credentials/token_*.pickle
