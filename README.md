@@ -149,12 +149,43 @@ just package-macos
 ```
 
 This creates `dist/Photo Meta Sync.app` and `dist/PhotoMetaSync-macOS-arm64.dmg`.
-The GitHub release workflow builds macOS and Windows artifacts when a `v*` tag is
-pushed. Before using it, add the full Desktop OAuth client JSON as the repository
-secret `GOOGLE_OAUTH_CLIENT_JSON`; never add an OAuth token to repository secrets.
+The GitHub release workflow builds macOS Apple Silicon, macOS Intel, and Windows
+artifacts when a `v*` tag is pushed. Before using it, add the full Desktop OAuth
+client JSON as the repository secret `GOOGLE_OAUTH_CLIENT_JSON`; never add an
+OAuth token to repository secrets.
 
 The unsigned artifacts are suitable for testing. Public releases may show macOS
 Gatekeeper or Windows SmartScreen warnings until they are code-signed.
+
+### FAQ: opening the macOS app
+
+#### macOS says it cannot verify the app or that it may contain malware
+
+The GitHub `.dmg` is currently not signed or notarized by Apple, so macOS
+Gatekeeper adds a quarantine flag to downloads. This warning does not mean the
+release is known to be malicious, but macOS cannot verify its publisher.
+
+1. Copy `Photo Meta Sync.app` from the `.dmg` to the `Applications` folder.
+2. In Finder, Control-click the app and choose **Open**.
+3. Confirm **Open** in the macOS dialog.
+
+If macOS still refuses to show the confirmation dialog, open Terminal and run
+the following command **only for a release you intentionally downloaded from
+this repository**:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Photo Meta Sync.app"
+```
+
+Then open the app again. It starts a local server and opens its interface in
+your browser; it does not have a separate native application window.
+
+#### Can the Gatekeeper warning be removed for everyone?
+
+Not for a downloaded macOS app without Apple signing and notarization. The
+no-cost alternatives are the Finder/Terminal steps above, or running the
+project from source. Each release includes two macOS downloads: choose
+`macOS-arm64` for Apple Silicon Macs (M1 and later), or `macOS-x64` for Intel Macs.
 
 **Typical workflow:**
 

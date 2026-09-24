@@ -18,6 +18,10 @@ jobs:
         include:
           - os: macos-14
             name: macOS-arm64
+            arch: arm64
+          - os: macos-13
+            name: macOS-x64
+            arch: x64
           - os: windows-2022
             name: Windows-x64
     runs-on: ${{ matrix.os }}
@@ -45,7 +49,7 @@ jobs:
         run: uv run pyinstaller --noconfirm --clean GPhotoMetaSync.spec
       - name: Package macOS disk image
         if: runner.os == 'macOS'
-        run: hdiutil create -volname "Photo Meta Sync" -srcfolder "dist/Photo Meta Sync.app" -ov -format UDZO "dist/PhotoMetaSync-macOS-arm64.dmg"
+        run: hdiutil create -volname "Photo Meta Sync" -srcfolder "dist/Photo Meta Sync.app" -ov -format UDZO "dist/PhotoMetaSync-macOS-${{ matrix.arch }}.dmg"
       - name: Package Windows archive
         if: runner.os == 'Windows'
         shell: pwsh
