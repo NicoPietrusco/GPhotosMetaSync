@@ -12,7 +12,7 @@
     <header class="source-panel-header">
       <span class="source-number" aria-hidden="true">01</span>
       <div>
-        <p class="source-kicker">On this Mac</p>
+        <p class="source-kicker">On this device</p>
         <h2 id="local-source-title">Process local photos</h2>
       </div>
       <span class="privacy-chip">Private</span>
@@ -35,35 +35,17 @@
       </label>
       <input type="hidden" name="stem_suffix" id="local-stem-suffix" value="">
     </div>
+    <label class="checkbox-label local-json-option" title="Adds a separate JSON file with the extracted metadata for each image.">
+      <input type="checkbox" id="local-include-json">
+      Include a JSON metadata file
+    </label>
+    <input type="hidden" name="include_json" id="local-include-json-field" value="0">
     <div id="local-preview" class="local-preview" hidden>
       <p class="local-preview-heading" id="local-preview-count"></p>
       <div id="local-preview-grid" class="local-preview-grid"></div>
       <ul id="local-preview-names" class="local-preview-names" aria-label="Selected files"></ul>
     </div>
-    <details class="local-settings">
-      <summary class="local-settings-summary" title="Choose whether to include a JSON metadata file.">
-        <svg class="local-settings-gear" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="21" x2="14" y1="4" y2="4"/>
-          <line x1="10" x2="3" y1="4" y2="4"/>
-          <line x1="21" x2="12" y1="12" y2="12"/>
-          <line x1="8" x2="3" y1="12" y2="12"/>
-          <line x1="21" x2="16" y1="20" y2="20"/>
-          <line x1="12" x2="3" y1="20" y2="20"/>
-          <line x1="14" x2="14" y1="2" y2="6"/>
-          <line x1="8" x2="8" y1="10" y2="14"/>
-          <line x1="16" x2="16" y1="18" y2="22"/>
-        </svg>
-        <span>Configuration</span>
-      </summary>
-      <div class="local-settings-body">
-        <label class="checkbox-label" title="Adds a separate JSON file with the extracted metadata for each image.">
-          <input type="checkbox" id="local-include-json">
-          Include a JSON metadata file
-        </label>
-        <input type="hidden" name="include_json" id="local-include-json-field" value="0">
-        <p class="local-hint muted">Turn on JSON only when you need a sidecar file. New images always use <code id="local-suffix-value">{{ settings.web_output_image_suffix or '_exif' }}</code>, so originals stay untouched.</p>
-      </div>
-    </details>
+    <p class="local-hint muted">New images always use <code id="local-suffix-value">{{ settings.web_output_image_suffix or '_exif' }}</code>, so originals stay untouched.</p>
     <div class="form-row local-actions">
       <button type="submit" class="btn btn-primary has-tooltip" id="local-submit" data-tooltip="Create copies, then choose where to save them from the results page.">Process photos</button>
     </div>

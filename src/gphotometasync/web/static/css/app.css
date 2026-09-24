@@ -261,67 +261,6 @@ code {
   color: var(--primary-fg);
 }
 
-.local-settings {
-  margin: 0.85rem 0 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: #fafafa;
-  overflow: hidden;
-}
-
-.local-settings-summary {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.55rem 0.75rem;
-  cursor: pointer;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  list-style: none;
-  user-select: none;
-}
-
-.local-settings-summary::after {
-  content: "▸";
-  margin-left: auto;
-  font-size: 0.7rem;
-  opacity: 0.65;
-  transition: transform 0.15s ease;
-}
-
-.local-settings[open] .local-settings-summary::after {
-  transform: rotate(90deg);
-}
-
-.local-settings-summary::-webkit-details-marker {
-  display: none;
-}
-
-.local-settings-summary::marker {
-  display: none;
-}
-
-.local-settings-gear {
-  flex-shrink: 0;
-  opacity: 0.85;
-}
-
-.local-settings[open] .local-settings-summary {
-  border-bottom: 1px solid var(--border);
-  background: #f3f4f6;
-}
-
-.local-settings-body {
-  padding: 0.65rem 0.75rem 0.75rem;
-}
-
-.local-settings-body .local-hint {
-  margin-top: 0.5rem;
-}
-
 .checkbox-label {
   display: flex;
   align-items: flex-start;
@@ -350,6 +289,10 @@ code {
   align-items: center;
   gap: 0.5rem 0.75rem;
   margin-top: 0.75rem;
+}
+
+.local-json-option {
+  margin-top: 0.7rem;
 }
 
 .local-dir-label {
@@ -1028,12 +971,6 @@ body {
 .local-file-picker strong { color: #153d31; font-size: 1.25rem; }
 .file-picker-caption { color: #557364; font-size: 0.85rem; }
 
-.local-settings {
-  margin-top: 0.85rem;
-  border-color: #dae2da;
-  background: #fbfcfa;
-}
-
 .local-actions { margin-top: 1rem; justify-content: space-between; }
 .local-actions .btn-primary { margin-left: auto; }
 .local-dir-label { color: #2b6c52; font-weight: 600; }
@@ -1143,6 +1080,56 @@ body {
   .workspace-intro h1 { max-width: 11ch; }
   .source-panel { padding: 1.05rem; }
   .workspace-note { align-items: flex-start; flex-direction: column; gap: 0.35rem; }
+}
+
+/* Keep the initial two-source choice within a typical desktop viewport. Dynamic
+   previews and result grids are still free to extend the page below the fold. */
+@media (min-width: 761px) and (min-height: 680px) {
+  .page {
+    min-height: 100vh;
+    padding-top: 0.9rem;
+    padding-bottom: 1rem;
+  }
+
+  .app-header {
+    margin-bottom: clamp(0.85rem, 2.2vh, 1.5rem);
+    padding-bottom: 0.75rem;
+  }
+
+  .workspace-intro {
+    margin-bottom: clamp(0.85rem, 2vh, 1.4rem);
+  }
+
+  .workspace-intro h1 {
+    font-size: clamp(2.25rem, 4vw, 3.6rem);
+  }
+
+  .workspace-intro > p:last-child {
+    margin-top: 0.75rem;
+  }
+
+  .source-panel {
+    padding: 1rem 1.15rem;
+  }
+
+  .source-panel-copy {
+    margin-bottom: 0.85rem;
+  }
+
+  .local-file-picker {
+    min-height: 6.75rem;
+    padding: 1rem;
+  }
+
+  .local-actions {
+    margin-top: 0.65rem;
+  }
+
+  .workspace-note {
+    margin-top: 0.65rem;
+    padding-top: 0.6rem;
+    padding-bottom: 0;
+  }
 }
 
 /* Results workspace */
