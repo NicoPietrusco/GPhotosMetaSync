@@ -5,9 +5,12 @@ Flask application: local desktop use (localhost). Google Photos via Desktop OAut
 from __future__ import annotations
 
 import io
+import os
 import re
 import secrets
+import threading
 import uuid
+import webbrowser
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,6 +32,7 @@ from flask import (
     url_for,
 )
 from google.oauth2.credentials import Credentials
+from werkzeug.serving import make_server
 from werkzeug.utils import secure_filename
 
 from ..core.photo_utils import process_uploaded_image
@@ -179,7 +183,7 @@ def _creds_for_request() -> tuple[Credentials, PickerSessionData] | None:
             settings.google_token_path.parent.mkdir(parents=True, exist_ok=True)
             settings.google_token_path.write_text(data.credentials_json)
         except OSError as e:
-            logger.warning("Could not persist google_token.json: %s", e)
+            logger.warning("Could not persist google_token.json: {}", e)
     return creds, data
 
 
@@ -256,7 +260,7 @@ def create_app() -> Flask:
                 resp.set_cookie("session_id", sid, httponly=True, samesite="Lax")
                 return resp
             except Exception as e:
-                logger.warning("check-auth token restore: %s", e)
+                logger.warning("check-auth token restore: {}", e)
 
         return jsonify({"ok": False}), 401
 
@@ -290,7 +294,7 @@ def create_app() -> Flask:
             ct = raw_ct if raw_ct.startswith("image/") else "image/jpeg"
             return Response(r.content, mimetype=ct)
         except Exception as e:
-            logger.warning("picker-image: %s", e)
+            logger.warning("picker-image: {}", e)
             return jsonify({"detail": str(e)}), 502
 
     @app.post("/upload")
@@ -538,7 +542,7 @@ def create_app() -> Flask:
                 }
             )
         except Exception as e:
-            logger.warning("session-status: %s", e)
+            logger.warning("session-status: {}", e)
             return jsonify({"mediaItemsSet": False, "status": "error", "error": str(e)})
 
     @app.get("/api/list-selected")
@@ -574,8 +578,11 @@ def create_app() -> Flask:
             return jsonify({"detail": "base_url required"}), 400
         ensure_fresh(creds)
         pdata.credentials_json = creds.to_json()
+        access_token = creds.token
+        if not isinstance(access_token, str):
+            return jsonify({"detail": "Google access token unavailable"}), 401
         try:
-            raw = google_photos.download_picker_media_bytes(base_url, creds.token)
+            raw = google_photos.download_picker_media_bytes(base_url, access_token)
         except Exception as e:
             return jsonify({"detail": f"Download failed: {e}"}), 502
 
@@ -630,6 +637,9 @@ def create_app() -> Flask:
         for i, it in enumerate(items):
             ensure_fresh(creds)
             pdata.credentials_json = creds.to_json()
+            access_token = creds.token
+            if not isinstance(access_token, str):
+                return jsonify({"detail": "Google access token unavailable"}), 401
             if not isinstance(it, dict):
                 errors.append({"index": i, "error": "invalid item"})
                 continue
@@ -640,7 +650,7 @@ def create_app() -> Flask:
                 continue
 
             try:
-                raw = google_photos.download_picker_media_bytes(base_url, creds.token)
+                raw = google_photos.download_picker_media_bytes(base_url, access_token)
             except Exception as e:
                 errors.append({"index": i, "filename": filename, "error": str(e)})
                 continue
@@ -683,5 +693,14 @@ def create_app() -> Flask:
 
 def main() -> None:
     app = create_app()
-    # Default 5001: on macOS, port 5000 is often taken by AirPlay Receiver (403 in the browser).
-    app.run(host="127.0.0.1", port=int(__import__("os").environ.get("PORT", "5001")), debug=True)
+    # Use a stable development port, but avoid collisions in a frozen desktop app.
+    default_port = "0" if getattr(__import__("sys"), "frozen", False) else "5001"
+    port = int(os.environ.get("PORT", default_port))
+    server = make_server("127.0.0.1", port, app)
+    url = f"http://127.0.0.1:{server.server_port}"
+    logger.info("Photo Meta Sync is running at {}", url)
+    threading.Timer(0.2, webbrowser.open, args=(url,)).start()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        logger.info("Photo Meta Sync stopped")
