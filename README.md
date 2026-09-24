@@ -126,10 +126,35 @@ just setup        # venv + uv sync (dev group, includes ruff)
 just verify       # check credentials/client_secrets.json + app import
 just web          # run Flask app (same as `just run`)
 just lint         # ruff check
+just typecheck    # ty static type check
 just format       # ruff format
+just package      # build the local desktop bundle
+just package-macos # build the macOS .app and .dmg
 just clean        # remove caches
 just clean-all    # caches + data/outputs, data/uploads, output/*
 ```
+
+### Desktop releases
+
+The published desktop app includes the Google OAuth client configured by the project
+maintainer. A person who downloads the app only signs in with their Google account;
+they do not download credentials or create a Google Cloud project. Their OAuth token
+stays on their computer.
+
+For a local macOS build:
+
+```bash
+just install
+just package-macos
+```
+
+This creates `dist/Photo Meta Sync.app` and `dist/PhotoMetaSync-macOS-arm64.dmg`.
+The GitHub release workflow builds macOS and Windows artifacts when a `v*` tag is
+pushed. Before using it, add the full Desktop OAuth client JSON as the repository
+secret `GOOGLE_OAUTH_CLIENT_JSON`; never add an OAuth token to repository secrets.
+
+The unsigned artifacts are suitable for testing. Public releases may show macOS
+Gatekeeper or Windows SmartScreen warnings until they are code-signed.
 
 **Typical workflow:**
 

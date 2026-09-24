@@ -3,6 +3,8 @@ Application settings and constants for GPhotoMetaSync.
 """
 
 import os
+import secrets
+import sys
 from pathlib import Path
 from typing import Set
 
@@ -54,7 +56,26 @@ class Settings:
     # Web / Flask (override via environment)
     @property
     def secret_key(self) -> str:
-        return os.environ.get("SECRET_KEY", "dev-only-change-SECRET_KEY")
+        configured = os.environ.get("SECRET_KEY")
+        if configured:
+            return configured
+        if not getattr(sys, "frozen", False):
+            return "dev-only-change-SECRET_KEY"
+
+        key_path = self.app_data_dir / "state" / "flask_secret_key"
+        try:
+            if key_path.is_file():
+                return key_path.read_text(encoding="utf-8").strip()
+            key_path.parent.mkdir(parents=True, exist_ok=True)
+            key = secrets.token_urlsafe(32)
+            key_path.write_text(key, encoding="utf-8")
+            try:
+                key_path.chmod(0o600)
+            except OSError:
+                pass
+            return key
+        except OSError:
+            return secrets.token_urlsafe(32)
 
     @property
     def max_upload_mb(self) -> int:
@@ -74,12 +95,12 @@ class Settings:
         env = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRETS")
         if env:
             return Path(env)
-        return self.base_dir / "credentials" / "client_secrets.json"
+        return self.resource_dir / "credentials" / "client_secrets.json"
 
     @property
     def google_token_path(self) -> Path:
         """Saved OAuth token after first sign-in (local only, gitignored)."""
-        return self.base_dir / "credentials" / "google_token.json"
+        return self.app_data_dir / "credentials" / "google_token.json"
 
     @property
     def upload_dir(self) -> Path:
@@ -91,13 +112,36 @@ class Settings:
 
     @property
     def base_dir(self) -> Path:
-        """Get the base directory of the application."""
+        """Backward-compatible alias for the directory containing app resources."""
+        return self.resource_dir
+
+    @property
+    def resource_dir(self) -> Path:
+        """Directory containing read-only application resources."""
+        bundle_dir = getattr(sys, "_MEIPASS", None)
+        if getattr(sys, "frozen", False) and isinstance(bundle_dir, str):
+            return Path(bundle_dir)
         return Path(__file__).parent.parent.parent
+
+    @property
+    def app_data_dir(self) -> Path:
+        """Writable data directory; separate from a frozen app bundle."""
+        override = os.environ.get("GPHOTOMETASYNC_DATA_DIR")
+        if override:
+            return Path(override).expanduser()
+        if not getattr(sys, "frozen", False):
+            return self.resource_dir
+        home = Path.home()
+        if sys.platform == "darwin":
+            return home / "Library" / "Application Support" / "GPhotoMetaSync"
+        if os.name == "nt":
+            return Path(os.environ.get("LOCALAPPDATA", home / "AppData" / "Local")) / "GPhotoMetaSync"
+        return Path(os.environ.get("XDG_DATA_HOME", home / ".local" / "share")) / "gphotometasync"
 
     @property
     def data_dir(self) -> Path:
         """Get the data directory."""
-        return self.base_dir / "data"
+        return self.app_data_dir / "data"
 
     @property
     def docs_dir(self) -> Path:
