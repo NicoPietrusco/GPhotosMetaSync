@@ -17,9 +17,10 @@ def process_uploaded_image(
     field_config: ExifFieldConfig | None = None,
     stem_suffix: str = "_exif",
     output_stem: str | None = None,
+    write_json: bool = True,
 ) -> dict:
     """
-    Run extract JSON + embed subset for one file (used by Flask).
+    Run EXIF extraction + embedding for one file (used by Flask).
 
     Returns a result dict with success, paths, embed_ok, or error.
     """
@@ -31,4 +32,5 @@ def process_uploaded_image(
         field_config,
         stem_suffix=stem_suffix,
         output_stem=output_stem,
+        write_json=write_json,
     )

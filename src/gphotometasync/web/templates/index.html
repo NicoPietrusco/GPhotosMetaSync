@@ -1,19 +1,36 @@
 {% extends "base.html" %}
 {% block body %}
-<section class="section-card">
-  <h2>Photos on this computer</h2>
-  <p>Pick <strong>individual files</strong> or an entire <strong>folder</strong> (toggle below). The app extracts EXIF, embeds the fields you keep in settings, and writes updated images plus JSON sidecars. In Chrome or Edge, choose an <strong>output folder</strong> before saving so files go where you want (same filenames as the originals if you leave the suffix off—so you can replace them in place).</p>
+<main class="home-workspace">
+  <section class="workspace-intro">
+    <p class="eyebrow">Metadata workspace</p>
+    <h1>Keep the story inside every photo.</h1>
+    <p>Photo Meta Sync saves a new copy of each image with its date, camera details, and location embedded. Add a JSON record only when you need it. By default, your originals stay untouched.</p>
+  </section>
+
+  <div class="source-grid">
+  <section class="source-panel source-panel--local" aria-labelledby="local-source-title">
+    <header class="source-panel-header">
+      <span class="source-number" aria-hidden="true">01</span>
+      <div>
+        <p class="source-kicker">On this Mac</p>
+        <h2 id="local-source-title">Process local photos</h2>
+      </div>
+      <span class="privacy-chip">Private</span>
+    </header>
+    <p class="source-panel-copy">Choose individual images or a folder to create refreshed copies with embedded metadata. Save everything from the results page.</p>
   <form id="local-upload-form" method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data">
     <div class="local-pick-mode" role="group" aria-label="Pick files or a folder">
-      <span class="local-pick-mode-label">Pick</span>
+      <span class="local-pick-mode-label">Select</span>
       <div class="local-pick-toggle">
-        <button type="button" class="local-pick-btn is-active" id="local-pick-files" aria-pressed="true">Files</button>
-        <button type="button" class="local-pick-btn" id="local-pick-folder" aria-pressed="false">Folder</button>
+        <button type="button" class="local-pick-btn is-active has-tooltip" id="local-pick-files" aria-pressed="true" data-tooltip="Choose one or more individual photos.">Files</button>
+        <button type="button" class="local-pick-btn has-tooltip" id="local-pick-folder" aria-pressed="false" data-tooltip="Choose every supported photo inside one folder.">Folder</button>
       </div>
     </div>
     <div class="form-row local-file-row">
-      <label class="btn btn-secondary local-file-picker">
-        <span id="local-file-label-text">Choose files</span>
+      <label class="local-file-picker has-tooltip" data-tooltip="Select photos to process. Nothing is uploaded outside this device.">
+        <span class="file-picker-eyebrow">Ready when you are</span>
+        <strong id="local-file-label-text">Choose photos</strong>
+        <span class="file-picker-caption">JPEG, PNG, TIFF, WebP, HEIC and more</span>
         <input type="file" id="local-file-input" name="file" accept="image/*" multiple required class="local-file-input-hidden" aria-label="Choose files">
       </label>
       <input type="hidden" name="stem_suffix" id="local-stem-suffix" value="">
@@ -24,59 +41,80 @@
       <ul id="local-preview-names" class="local-preview-names" aria-label="Selected files"></ul>
     </div>
     <details class="local-settings">
-      <summary class="local-settings-summary">
+      <summary class="local-settings-summary" title="Choose whether to include a JSON metadata file.">
         <svg class="local-settings-gear" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.08l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1 0-2.08l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-          <circle cx="12" cy="12" r="3"/>
+          <line x1="21" x2="14" y1="4" y2="4"/>
+          <line x1="10" x2="3" y1="4" y2="4"/>
+          <line x1="21" x2="12" y1="12" y2="12"/>
+          <line x1="8" x2="3" y1="12" y2="12"/>
+          <line x1="21" x2="16" y1="20" y2="20"/>
+          <line x1="12" x2="3" y1="20" y2="20"/>
+          <line x1="14" x2="14" y1="2" y2="6"/>
+          <line x1="8" x2="8" y1="10" y2="14"/>
+          <line x1="16" x2="16" y1="18" y2="22"/>
         </svg>
         <span>Configuration</span>
       </summary>
       <div class="local-settings-body">
-        <label class="checkbox-label">
-          <input type="checkbox" id="local-add-suffix">
-          Add suffix <code id="local-suffix-value">{{ settings.web_output_image_suffix or '_exif' }}</code> to image filenames
+        <label class="checkbox-label" title="Adds a separate JSON file with the extracted metadata for each image.">
+          <input type="checkbox" id="local-include-json">
+          Include a JSON metadata file
         </label>
-        <p class="local-hint muted">Unchecked: same base name as each original (replace originals when saving to the same folder). Checked: append the configured suffix (shown in the label; default <code>_exif</code>) before the extension. Set <code>WEB_OUTPUT_IMAGE_SUFFIX</code> in <code>.env</code> to change that string.</p>
+        <input type="hidden" name="include_json" id="local-include-json-field" value="0">
+        <p class="local-hint muted">Turn on JSON only when you need a sidecar file. New images always use <code id="local-suffix-value">{{ settings.web_output_image_suffix or '_exif' }}</code>, so originals stay untouched.</p>
       </div>
     </details>
     <div class="form-row local-actions">
-      <button type="button" class="btn btn-secondary" id="local-choose-dir">Choose output folder…</button>
-      <span id="local-dir-label" class="local-dir-label" hidden></span>
-      <button type="submit" class="btn btn-primary" id="local-submit">Save metadata</button>
+      <button type="submit" class="btn btn-primary has-tooltip" id="local-submit" data-tooltip="Create copies, then choose where to save them from the results page.">Process photos</button>
     </div>
-    <p id="local-fs-hint" class="local-hint muted">Your browser doesn’t support saving straight to a folder. After processing, use the next page to download files or “Save all” as a ZIP.</p>
+    <p class="local-hint muted">After processing, both local and Google Photos use the same results page to save all files.</p>
   </form>
   <script>window.__LOCAL_SUFFIX__ = {{ settings.web_output_image_suffix | tojson }};</script>
   <script src="{{ url_for('static', filename='js/local_upload.js') }}" defer></script>
 </section>
 
-<hr class="divider">
-
-<section class="picker-section">
-  <h2 class="picker-heading">Photos from Google</h2>
-  {% if google_oauth_ready %}
-  <div class="section-card picker-google-card">
-    <p class="section-intro">Sign in with Google, open the photo picker, choose what you need, then save everything in one step. Your account sign-in and files stay on this device.</p>
-    <div class="controls">
-      <button class="btn btn-primary" type="button" onclick="authenticate()" id="auth-btn">Sign in with Google</button>
-      <button class="btn btn-primary" type="button" onclick="openPicker()" id="picker-btn" disabled>Choose photos</button>
+<section class="source-panel source-panel--google" aria-labelledby="google-source-title">
+  <header class="source-panel-header">
+    <span class="source-number" aria-hidden="true">02</span>
+    <div>
+      <p class="source-kicker">Google Photos</p>
+      <div class="google-photos-title">
+        <svg class="google-photos-mark" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 4a10 10 0 0 0-10 10v10h10V4Z"/>
+          <path fill="#4285F4" d="M44 24a10 10 0 0 0-10-10H24v10h20Z"/>
+          <path fill="#34A853" d="M24 44a10 10 0 0 0 10-10V24H24v20Z"/>
+          <path fill="#FBBC04" d="M4 24a10 10 0 0 0 10 10h10V24H4Z"/>
+        </svg>
+        <h2 id="google-source-title">Choose from your library</h2>
+      </div>
     </div>
-    <div id="status" class="status"></div>
+  </header>
+  {% if google_oauth_ready %}
+  <div class="picker-google-card">
+    <p class="source-panel-copy">Choose photos from Google, then save refreshed copies from the same results page.</p>
+    <label class="checkbox-label google-json-option" title="Adds a separate JSON file with the extracted metadata for each image.">
+      <input type="checkbox" id="google-include-json">
+      Include a JSON metadata file
+    </label>
+    <div class="controls">
+      <button class="btn btn-secondary has-tooltip" type="button" onclick="authenticate()" id="auth-btn" data-tooltip="Connect your Google account. Your sign-in stays on this device."><span class="button-step">1</span><svg class="google-icon" viewBox="0 -1 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.27c0-.79-.07-1.55-.21-2.27H12v4.3h5.22a4.46 4.46 0 0 1-1.94 2.93v2.79h3.59c2.1-1.94 3.32-4.8 3.32-7.75Z"/><path fill="#34A853" d="M12 21.73c2.65 0 4.87-.88 6.49-2.39l-3.59-2.79c-1 .67-2.27 1.07-3.9 1.07-3 0-5.54-2.03-6.45-4.76H.84v2.88A9.8 9.8 0 0 0 12 21.73Z"/><path fill="#FBBC05" d="M5.55 12.86A5.9 5.9 0 0 1 5.19 10.8c0-.71.13-1.4.36-2.06V5.86H.84A9.8 9.8 0 0 0 0 10.8c0 1.58.38 3.07 1.04 4.34l4.51-3.28Z"/><path fill="#EA4335" d="M12 3.93c1.76 0 3.34.61 4.58 1.81l3.43-3.43C16.86.36 14.64-.27 12-.27A9.8 9.8 0 0 0 .84 5.86l4.71 2.88c.91-2.73 3.45-4.81 6.45-4.81Z"/></svg> Sign in with Google</button>
+      <button class="btn btn-primary has-tooltip" type="button" onclick="openPicker()" id="picker-btn" disabled data-tooltip="Open Google’s picker after signing in."><span class="button-step">2</span> Choose photos</button>
+    </div>
+    <div id="status" class="status" aria-live="polite"></div>
     <div id="photos-container" class="photos-container">
       <div class="photos-header">
-        <h2>Photos you chose</h2>
+        <h2>Your selection</h2>
         <div class="photos-header-actions">
           <div class="photo-count" id="photo-count">0 photos</div>
-          <button type="button" class="btn btn-primary" id="extract-exif-btn" onclick="extractAllExif()" style="display:none">Save metadata for all</button>
+          <button type="button" class="btn btn-primary" id="extract-exif-btn" onclick="extractAllExif()" style="display:none">Save metadata</button>
         </div>
       </div>
       <div id="photos-content"></div>
     </div>
-  </div>
   <script src="{{ url_for('static', filename='js/picker.js') }}"></script>
   {% else %}
   <div class="oauth-setup-hint">
-    <p><strong>Google sign-in isn’t set up yet.</strong> If you’re installing this app yourself, complete the one-time steps below, then reload this page.</p>
+    <p><strong>Google sign-in isn’t configured on this copy.</strong></p>
     <ol>
       <li>Turn on <a href="https://console.cloud.google.com/apis/library" target="_blank" rel="noopener">Google Photos Picker API</a> in Google Cloud.</li>
       <li>Create an OAuth client (type <strong>Desktop app</strong>) under <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Credentials</a>.</li>
@@ -86,4 +124,11 @@
   </div>
   {% endif %}
 </section>
+</div>
+
+<aside class="workspace-note">
+  <span class="workspace-note-label">What is saved</span>
+  <p>Each processed photo gets an updated image with a new filename. Add JSON sidecars when you need them. Originals are never changed.</p>
+</aside>
+</main>
 {% endblock %}

@@ -4,17 +4,13 @@
   const pickFilesBtn = document.getElementById("local-pick-files");
   const pickFolderBtn = document.getElementById("local-pick-folder");
   const fileLabelText = document.getElementById("local-file-label-text");
-  const addSuffix = document.getElementById("local-add-suffix");
+  const includeJson = document.getElementById("local-include-json");
+  const includeJsonField = document.getElementById("local-include-json-field");
   const stemField = document.getElementById("local-stem-suffix");
-  const chooseDirBtn = document.getElementById("local-choose-dir");
-  const dirLabel = document.getElementById("local-dir-label");
-  const fsHint = document.getElementById("local-fs-hint");
   const localPreview = document.getElementById("local-preview");
   const localPreviewCount = document.getElementById("local-preview-count");
   const localPreviewGrid = document.getElementById("local-preview-grid");
   const localPreviewNames = document.getElementById("local-preview-names");
-  const fsSupported = typeof window.showDirectoryPicker === "function";
-  let dirHandle = null;
   /** @type {string[]} */
   let previewObjectUrls = [];
   const MAX_PREVIEW_THUMBS = 48;
@@ -24,17 +20,21 @@
 
   function syncStemField() {
     if (!stemField) return;
-    stemField.value = addSuffix && addSuffix.checked ? suffixDefault() : "";
+    stemField.value = suffixDefault();
   }
 
-  if (addSuffix) {
-    addSuffix.addEventListener("change", syncStemField);
+  function syncJsonField() {
+    if (includeJsonField) includeJsonField.value = includeJson && includeJson.checked ? "1" : "0";
+  }
+
+  if (includeJson) {
+    includeJson.addEventListener("change", () => {
+      syncJsonField();
+      updateLocalPreview();
+    });
   }
   syncStemField();
-
-  if (fsHint) {
-    fsHint.hidden = fsSupported;
-  }
+  syncJsonField();
 
   function clearLocalPreview() {
     previewObjectUrls.forEach((u) => URL.revokeObjectURL(u));
@@ -60,7 +60,9 @@
       if (files[i].type.startsWith("image/")) imageCount += 1;
     }
     if (localPreviewCount) {
-      let line = `${n} file(s) selected`;
+      const outputName = `filenames ending in ${suffixDefault()}`;
+      const jsonOutput = includeJson && includeJson.checked ? "with JSON files" : "images only";
+      let line = `${n} file(s) selected — ${outputName}, ${jsonOutput}`;
       if (imageCount !== n) line += ` (${imageCount} image preview)`;
       if (n > MAX_PREVIEW_THUMBS) {
         line += ` — showing ${MAX_PREVIEW_THUMBS} thumbnails`;
@@ -127,22 +129,6 @@
     setPickMode("files");
   }
 
-  if (chooseDirBtn) {
-    chooseDirBtn.style.display = fsSupported ? "inline-flex" : "none";
-    chooseDirBtn.addEventListener("click", async () => {
-      if (!fsSupported) return;
-      try {
-        dirHandle = await window.showDirectoryPicker();
-        if (dirLabel) {
-          dirLabel.hidden = false;
-          dirLabel.textContent = "Output folder selected";
-        }
-      } catch (e) {
-        if (e.name !== "AbortError") console.error(e);
-      }
-    });
-  }
-
   if (!form || !fileInput) return;
 
   fileInput.addEventListener("change", updateLocalPreview);
@@ -165,85 +151,13 @@
     form.submit();
   }
 
-  async function writeFileRecursive(dir, relativePath, blob) {
-    const parts = relativePath.split("/").filter(Boolean);
-    for (const p of parts) {
-      if (p === ".." || p === ".") throw new Error("Invalid path");
-    }
-    let handle = dir;
-    for (let i = 0; i < parts.length - 1; i++) {
-      handle = await handle.getDirectoryHandle(parts[i], { create: true });
-    }
-    const fileH = await handle.getFileHandle(parts[parts.length - 1], {
-      create: true,
-    });
-    const writable = await fileH.createWritable();
-    await writable.write(blob);
-    await writable.close();
-  }
-
-  form.addEventListener("submit", async (e) => {
+  form.addEventListener("submit", (e) => {
     syncStemField();
+    syncJsonField();
     const files = fileInput.files;
     if (!files || !files.length) return;
 
     e.preventDefault();
-    const fd = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      fd.append("file", files[i]);
-      fd.append(
-        "relative_paths",
-        files[i].webkitRelativePath || files[i].name
-      );
-    }
-    fd.append("stem_suffix", stemField ? stemField.value : "");
-
-    if (fsSupported && dirHandle) {
-      try {
-        const res = await fetch(form.action, {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-          },
-          body: fd,
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) {
-          alert(
-            data.detail ||
-              (data.errors && data.errors.join("\n")) ||
-              "Something went wrong."
-          );
-          return;
-        }
-        for (const f of data.files || []) {
-          const imgBlob = await fetch(f.image_url).then((r) => r.blob());
-          await writeFileRecursive(dirHandle, f.relative_path, imgBlob);
-          if (f.json_url && f.json_relative_path) {
-            const jBlob = await fetch(f.json_url).then((r) => r.blob());
-            await writeFileRecursive(dirHandle, f.json_relative_path, jBlob);
-          }
-        }
-        let msg = `Saved ${data.processed} image(s) and JSON sidecars to your folder.`;
-        if (data.errors && data.errors.length) {
-          msg += "\n\nSome files had errors:\n" + data.errors.join("\n");
-        }
-        alert(msg);
-      } catch (err) {
-        console.error(err);
-        alert("Failed to save files to your folder.");
-      }
-      return;
-    }
-
-    if (fsSupported && !dirHandle) {
-      const go = confirm(
-        "No output folder chosen. Process on the server and open the download page instead?"
-      );
-      if (!go) return;
-    }
-
     submitWithRelativePaths();
   });
 })();

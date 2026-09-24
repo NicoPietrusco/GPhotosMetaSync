@@ -52,8 +52,14 @@ def _tag_name_to_id(ifd_cls: type, name: str) -> int | None:
 
 
 def _serialize_tag_value(val: Any) -> Any:
-    """JSON-safe; binary EXIF values as base64 strings with marker."""
+    """Make EXIF values JSON-safe, keeping human-readable byte values as text."""
     if isinstance(val, bytes):
+        try:
+            text = val.decode("utf-8").rstrip("\0")
+            if text.isprintable():
+                return text
+        except UnicodeDecodeError:
+            pass
         return {"__bytes_b64__": base64.standard_b64encode(val).decode("ascii")}
     if isinstance(val, tuple):
         return tuple(_serialize_tag_value(v) for v in val)
@@ -450,15 +456,38 @@ def embed_exif_dates(image_path: Path, output_dir: Path) -> bool:
         return False
 
 
+def apply_exif_timestamp(output_path: Path, nested_exif: dict[str, dict[str, Any]]) -> bool:
+    """Set an output file's modification time from its best available EXIF capture date."""
+    candidates = (
+        ("Exif", "DateTimeOriginal"),
+        ("Exif", "DateTimeDigitized"),
+        ("0th", "DateTime"),
+    )
+    for ifd_key, tag_name in candidates:
+        raw = nested_exif.get(ifd_key, {}).get(tag_name)
+        if not raw:
+            continue
+        date_str = raw.decode("ascii", errors="ignore") if isinstance(raw, bytes) else str(raw)
+        try:
+            timestamp = datetime.strptime(date_str, settings.EXIF_DATE_FORMAT).timestamp()
+            os.utime(output_path, (timestamp, timestamp))
+            return True
+        except (OSError, ValueError) as e:
+            logger.warning("Could not set filesystem date for {}: {}", output_path.name, e)
+            return False
+    return False
+
+
 def process_image_extract_and_embed(
     image_path: Path,
     output_dir: Path,
     field_config: ExifFieldConfig | None = None,
     stem_suffix: str = "_exif",
     output_stem: str | None = None,
+    write_json: bool = True,
 ) -> dict[str, Any]:
     """
-    Extract filtered EXIF to JSON and save a new image with embedded subset.
+    Extract filtered EXIF, optionally save JSON, and save a new image with embedded subset.
 
     If output_stem is set (local folder flow), JSON and image use that basename plus
     stem_suffix (use stem_suffix="" to match original names for overwrite-style output).
@@ -480,11 +509,11 @@ def process_image_extract_and_embed(
             image_path,
             output_dir,
             field_config,
-            write_json=True,
+            write_json=write_json,
             json_stem_name=json_stem_name,
         )
     else:
-        ext_result = extract_exif_data(image_path, output_dir, field_config, write_json=True)
+        ext_result = extract_exif_data(image_path, output_dir, field_config, write_json=write_json)
     if "error" in ext_result:
         return ext_result
 
@@ -492,11 +521,13 @@ def process_image_extract_and_embed(
     output_image = output_dir / out_name
 
     ok = embed_exif_subset(image_path, output_image, field_config)
+    filesystem_date_set = apply_exif_timestamp(output_image, ext_result["nested_filtered"]) if ok else False
     return {
         "success": True,
         "image_path": str(image_path),
         "json_path": ext_result.get("json_path"),
         "output_image": str(output_image),
         "embed_ok": ok,
+        "filesystem_date_set": filesystem_date_set,
         "exif_fields_count": ext_result.get("exif_fields_count", 0),
     }

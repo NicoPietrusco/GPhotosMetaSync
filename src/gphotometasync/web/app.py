@@ -113,6 +113,13 @@ def _parse_stem_suffix(raw: str | None) -> str:
     return ""
 
 
+def _parse_bool(raw: object, default: bool = True) -> bool:
+    """Parse a form or JSON boolean while preserving backward-compatible defaults."""
+    if raw is None:
+        return default
+    return str(raw).strip().lower() not in {"0", "false", "no", "off"}
+
+
 def _sanitize_relative_path(rel: str) -> str | None:
     """Normalize a client-provided relative path (folder uploads); reject path traversal."""
     if not rel or "\0" in rel:
@@ -261,6 +268,11 @@ def create_app() -> Flask:
                 return resp
             except Exception as e:
                 logger.warning("check-auth token restore: {}", e)
+                try:
+                    token_path.unlink()
+                except OSError:
+                    pass
+                return jsonify({"ok": False, "reason": "expired"}), 401
 
         return jsonify({"ok": False}), 401
 
@@ -312,6 +324,7 @@ def create_app() -> Flask:
             return redirect(url_for("index"))
 
         stem_suffix = _parse_stem_suffix(request.form.get("stem_suffix"))
+        include_json = _parse_bool(request.form.get("include_json"))
 
         rows: list[tuple] = []
         form_rels = request.form.getlist("relative_paths")
@@ -361,6 +374,7 @@ def create_app() -> Flask:
                 field_config,
                 stem_suffix=stem_suffix,
                 output_stem=output_stem,
+                write_json=include_json,
             )
             if result.get("error"):
                 errors.append(f"{safe_rel}: {result['error']}")
@@ -572,6 +586,7 @@ def create_app() -> Flask:
             return jsonify({"detail": "Not authenticated"}), 401
         creds, pdata = pair
         body = request.get_json(silent=True) or {}
+        include_json = _parse_bool(body.get("include_json"))
         base_url = (body.get("base_url") or "").strip()
         filename = (body.get("filename") or "photo.jpg").strip() or "photo.jpg"
         if not base_url:
@@ -596,7 +611,7 @@ def create_app() -> Flask:
         dest.write_bytes(raw)
 
         field_config = load_exif_field_config()
-        result = process_uploaded_image(dest, job_out, field_config)
+        result = process_uploaded_image(dest, job_out, field_config, write_json=include_json)
         if result.get("error"):
             return jsonify({"detail": result["error"]}), 500
 
@@ -619,6 +634,7 @@ def create_app() -> Flask:
             return jsonify({"detail": "Not authenticated"}), 401
         creds, pdata = pair
         body = request.get_json(silent=True) or {}
+        include_json = _parse_bool(body.get("include_json"))
         items = body.get("items")
         if not isinstance(items, list) or not items:
             return jsonify({"detail": "items must be a non-empty list"}), 400
@@ -661,7 +677,12 @@ def create_app() -> Flask:
             dest = upload_dir / f"{job_id}_{i}_{stem}"
             dest.write_bytes(raw)
 
-            result = process_uploaded_image(dest, job_out, field_config)
+            result = process_uploaded_image(
+                dest,
+                job_out,
+                field_config,
+                write_json=include_json,
+            )
             if result.get("error"):
                 errors.append({"index": i, "filename": stem, "error": result["error"]})
             else:

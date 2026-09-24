@@ -1,32 +1,34 @@
 {% extends "base.html" %}
 {% block body %}
-<section class="section-card">
-  <h2>Your saved files</h2>
-  <p class="job-summary">
-    <strong>{{ file_count }} file(s)</strong> in this batch
-    {% if image_files %}— {{ image_files|length }} image{% if image_files|length != 1 %}s{% endif %}{% endif %}
-    {% if json_files %}… {{ json_files|length }} JSON detail{% if json_files|length != 1 %}s{% endif %}{% endif %}
-    {% if other_files %}… {{ other_files|length }} other{% endif %}
-  </p>
+<main class="job-page">
+  <section class="job-hero">
+    <p class="eyebrow">Batch complete</p>
+    <h1>Your files are ready.</h1>
+    <p class="job-summary">Download one archive to keep the original photo dates when you extract the files.</p>
+    <p class="job-file-count" aria-label="Batch summary">
+      <strong>{{ file_count }}</strong> file{% if file_count != 1 %}s{% endif %}
+      {% if image_files or json_files or other_files %}:
+        {% if image_files %}{{ image_files|length }} image{% if image_files|length != 1 %}s{% endif %}{% endif %}
+        {% if json_files %}{% if image_files %}, {% endif %}{{ json_files|length }} JSON file{% if json_files|length != 1 %}s{% endif %}{% endif %}
+        {% if other_files %}{% if image_files or json_files %}, {% endif %}{{ other_files|length }} other file{% if other_files|length != 1 %}s{% endif %}{% endif %}
+      {% endif %}
+    </p>
   {% if file_count %}
-  <script>
-    if (!window.showDirectoryPicker) {
-      document.documentElement.classList.add("no-directory-picker");
-    }
-  </script>
-  <script type="application/json" id="job-download-manifest">{{ download_manifest | tojson }}</script>
-  <p class="job-actions job-actions--save">
-    <button type="button" class="btn btn-primary" id="job-save-all">Save all</button>
-    <a class="btn btn-primary job-save-zip-primary" href="{{ url_for('download_job_zip', job_id=job_id) }}">Save all</a>
-    <span class="job-actions-hint job-hint-fs">Pick a folder once—every file is saved separately (images and JSON), not zipped. Works in Chrome or Edge.</span>
-    <span class="job-actions-hint job-hint-no-fs">This browser saves the batch as one ZIP (single download). Unzip for separate files.</span>
-  </p>
-  <p class="job-zip-optional">
-    <a class="muted" href="{{ url_for('download_job_zip', job_id=job_id) }}">Download as ZIP instead</a>
-  </p>
+  <div class="job-actions job-actions--save">
+    <a class="btn btn-primary" href="{{ url_for('download_job_zip', job_id=job_id) }}">Download ZIP</a>
+    <span class="job-actions-hint">Your browser saves the ZIP to Downloads by default. Extract it to preserve each photo’s capture date as its file modification date; change the download folder in your browser settings if needed.</span>
+  </div>
   {% endif %}
-  <p class="job-hint">Downloads use the full filename. Lists below scroll when there are many files.</p>
+  </section>
 
+  <section class="job-files-panel">
+  <div class="job-files-panel-heading">
+    <div>
+      <p class="source-kicker">Output</p>
+      <h2>Files in this batch</h2>
+    </div>
+    <p class="job-hint">Individual downloads are available below. Use the ZIP above when file dates matter.</p>
+  </div>
   {% if image_files %}
   <h3 class="job-section-title">Images</h3>
   <ul class="job-files job-files--scroll">
@@ -61,8 +63,6 @@
   {% if not image_files and not json_files and not other_files %}
   <p class="job-empty">No files found in this folder.</p>
   {% endif %}
-</section>
-{% if file_count %}
-<script src="{{ url_for('static', filename='js/job_download.js') }}" defer></script>
-{% endif %}
+  </section>
+</main>
 {% endblock %}

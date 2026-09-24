@@ -70,13 +70,17 @@ async function extractAllExif() {
         return;
     }
     const btn = document.getElementById('extract-exif-btn');
+    const includeJson = document.getElementById('google-include-json');
     if (btn) btn.disabled = true;
     showStatus(`Saving metadata for ${loadedPickerItems.length} photo(s)…`, 'info');
     try {
         const r = await fetch('/api/process-google-batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: loadedPickerItems }),
+            body: JSON.stringify({
+                items: loadedPickerItems,
+                include_json: !includeJson || includeJson.checked,
+            }),
         });
         const data = await r.json();
         if (!r.ok) throw new Error(data.detail || data.error || r.statusText);
@@ -404,6 +408,11 @@ window.addEventListener('load', async () => {
             authBtn.className = 'btn btn-muted';
             authBtn.disabled = true;
             document.getElementById('picker-btn').disabled = false;
+        } else {
+            const data = await response.json().catch(() => ({}));
+            if (data.reason === 'expired') {
+                showStatus('Your Google session expired. Sign in again to choose photos.', 'info');
+            }
         }
     } catch {
         // not signed in
