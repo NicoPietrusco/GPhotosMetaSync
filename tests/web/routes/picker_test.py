@@ -108,7 +108,9 @@ def test_batch_never_sends_the_token_to_other_hosts(signed_in_client, monkeypatc
     ]
 
 
-def test_batch_exports_every_item_into_one_job(signed_in_client, monkeypatch, make_jpeg) -> None:
+def test_batch_exports_every_item_into_one_job(
+    signed_in_client, monkeypatch, make_jpeg, data_dir
+) -> None:
     photo = make_jpeg().read_bytes()
     monkeypatch.setattr(picker, "download_media_bytes", lambda url, token: photo)
 
@@ -128,6 +130,7 @@ def test_batch_exports_every_item_into_one_job(signed_in_client, monkeypatch, ma
     assert body["errors"] == [{"index": 2, "error": "invalid item"}]
     page = signed_in_client.get(body["job_url"]).get_data(as_text=True)
     assert "a_exif.jpg" in page and "b_exif.jpg" in page
+    assert list((data_dir / "data" / "uploads").iterdir()) == []  # staged downloads removed
 
 
 def test_batch_requires_items(signed_in_client) -> None:

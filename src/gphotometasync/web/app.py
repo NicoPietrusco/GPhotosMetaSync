@@ -9,6 +9,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from flask import Flask, request
 
+from ..core.jobs import prune_expired_jobs
 from ..core.metadata_fields import load_metadata_preferences
 from ..log import setup_logger
 from ..settings import settings
@@ -40,6 +41,7 @@ def create_app() -> Flask:
 
     for d in (settings.data_dir, settings.upload_dir, settings.web_output_dir):
         d.mkdir(parents=True, exist_ok=True)
+    prune_expired_jobs()
 
     @app.before_request
     def reject_non_local_hosts():
