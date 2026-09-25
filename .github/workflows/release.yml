@@ -37,6 +37,7 @@ jobs:
         run: |
           uv run ruff check src/
           uv run ty check src/
+          uv run pytest
       - name: Add the release OAuth client
         shell: bash
         env:
