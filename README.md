@@ -54,6 +54,8 @@ xattr -dr com.apple.quarantine "/Applications/Photo Meta Sync.app"
 
 The app runs only on your computer at `localhost`. Your Google login, selected photos, and metadata preferences are stored or processed locally; there is no hosted Photo Meta Sync server.
 
+Exported copies are kept only so you can download them: the app deletes them after 24 hours (set `JOB_RETENTION_HOURS` to change this). Working copies of the originals are removed as soon as each photo is processed.
+
 For a published desktop release, end users only sign in with their Google account. They do not need a Google Cloud project or their own OAuth credentials.
 
 ## Supported Formats

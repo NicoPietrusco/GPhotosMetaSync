@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import os
+import time
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -16,8 +17,9 @@ from gphotometasync.core.jobs import (
     is_image_file,
     list_job_files,
     new_job,
+    prune_expired_jobs,
     resolve_job_file,
-    staging_path,
+    staged_file,
 )
 
 
@@ -40,12 +42,54 @@ def test_unknown_or_malformed_job_ids_are_rejected(data_dir: Path, job_id: str) 
     assert get_job_dir(job_id) is None
 
 
-def test_staging_path_is_outside_the_job_output(data_dir: Path) -> None:
+def test_staged_file_is_outside_the_job_and_deleted_afterwards(data_dir: Path) -> None:
     job_id, job_dir = new_job()
-    path = staging_path(job_id, 3, "IMG.jpg")
 
-    assert path.name == f"{job_id}_3_IMG.jpg"
-    assert job_dir not in path.parents
+    with staged_file(job_id, 3, "IMG.jpg") as path:
+        path.write_bytes(b"x")
+        assert path.name == f"{job_id}_3_IMG.jpg"
+        assert job_dir not in path.parents
+
+    assert not path.exists()
+
+
+def test_staged_file_is_deleted_even_when_processing_fails(data_dir: Path) -> None:
+    with pytest.raises(RuntimeError), staged_file("job", 0, "IMG.jpg") as path:
+        path.write_bytes(b"x")
+        raise RuntimeError("processing failed")
+
+    assert not path.exists()
+
+
+def _age(path: Path, hours: float) -> None:
+    then = time.time() - hours * 3600
+    os.utime(path, (then, then))
+
+
+def test_prune_removes_only_expired_job_entries(data_dir: Path) -> None:
+    old_id, old_dir = new_job()
+    fresh_id, fresh_dir = new_job()
+    uploads = data_dir / "data" / "uploads"
+    uploads.mkdir(parents=True, exist_ok=True)
+    leftover = uploads / f"{old_id}_0_IMG.jpg"
+    leftover.write_bytes(b"x")
+    stranger = data_dir / "data" / "outputs" / "notes"
+    stranger.mkdir()
+    for path in (old_dir, leftover, stranger):
+        _age(path, 48)
+
+    assert prune_expired_jobs(max_age_hours=24) == 2
+    assert not old_dir.exists() and not leftover.exists()
+    assert fresh_dir.is_dir()
+    assert stranger.is_dir()  # not named after a job: never deleted
+
+
+def test_retention_period_comes_from_the_environment(data_dir: Path, monkeypatch) -> None:
+    _, job_dir = new_job()
+    _age(job_dir, 3)
+    monkeypatch.setenv("JOB_RETENTION_HOURS", "2")
+
+    assert prune_expired_jobs() == 1
 
 
 @pytest.mark.parametrize("rel", ["../secret.txt", "a/../../b", "a\0b", "", "a b.jpg"])

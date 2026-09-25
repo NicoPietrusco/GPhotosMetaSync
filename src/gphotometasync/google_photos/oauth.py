@@ -14,6 +14,9 @@ from ..settings import settings
 
 SCOPES = ["https://www.googleapis.com/auth/photospicker.mediaitems.readonly"]
 
+# Stop waiting for the Google redirect if the user abandons the sign-in page.
+SIGN_IN_TIMEOUT_SECONDS = 300
+
 
 class GooglePhotosOAuth:
     """Desktop OAuth using Google Cloud "Desktop" / Installed client JSON."""
@@ -26,4 +29,6 @@ class GooglePhotosOAuth:
             str(self.client_secret_file),
             SCOPES,
         )
-        return flow.run_local_server(port=0, open_browser=True, prompt="consent")
+        return flow.run_local_server(
+            port=0, open_browser=True, prompt="consent", timeout_seconds=SIGN_IN_TIMEOUT_SECONDS
+        )

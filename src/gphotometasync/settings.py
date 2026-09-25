@@ -48,6 +48,11 @@ class Settings:
         return int(os.environ.get("MAX_UPLOAD_MB", "50"))
 
     @property
+    def job_retention_hours(self) -> float:
+        """How long exported photos stay on disk for download before being deleted."""
+        return float(os.environ.get("JOB_RETENTION_HOURS", "24"))
+
+    @property
     def web_output_image_suffix(self) -> str:
         """
         Suffix appended to image/JSON basenames when "add suffix" is enabled locally.

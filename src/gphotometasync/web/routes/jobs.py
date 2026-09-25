@@ -27,7 +27,7 @@ from ...core.jobs import (
     list_job_files,
     new_job,
     resolve_job_file,
-    staging_path,
+    staged_file,
 )
 from ...core.metadata_fields import load_user_exif_field_config
 from ...settings import settings
@@ -115,16 +115,16 @@ def upload():
     for i, (f, name, safe_rel) in enumerate(rows):
         parent = Path(safe_rel).parent
         out_subdir = job_out / parent
-        dest = staging_path(job, i, name)
-        f.save(dest)
-        result = process_image_extract_and_embed(
-            dest,
-            out_subdir,
-            field_config,
-            stem_suffix=stem_suffix,
-            output_stem=Path(safe_rel).stem,
-            write_json=include_json,
-        )
+        with staged_file(job, i, name) as dest:
+            f.save(dest)
+            result = process_image_extract_and_embed(
+                dest,
+                out_subdir,
+                field_config,
+                stem_suffix=stem_suffix,
+                output_stem=Path(safe_rel).stem,
+                write_json=include_json,
+            )
         if result.get("error"):
             errors.append(f"{safe_rel}: {result['error']}")
             continue

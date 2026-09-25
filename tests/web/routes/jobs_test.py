@@ -44,6 +44,12 @@ def test_folder_upload_keeps_the_folder_structure(client, make_jpeg) -> None:
     assert sorted(f["relative_path"] for f in body["files"]) == ["trip/b.jpg", "trip/day1/a.jpg"]
 
 
+def test_upload_leaves_no_staged_copies(client, make_jpeg, data_dir) -> None:
+    _upload(client, [(make_jpeg().read_bytes(), "IMG.jpg"), (b"broken", "bad.jpg")])
+
+    assert list((data_dir / "data" / "uploads").iterdir()) == []
+
+
 def test_upload_rejects_unsupported_files(client) -> None:
     resp = _upload(client, [(b"GIF89a", "anim.gif")])
 

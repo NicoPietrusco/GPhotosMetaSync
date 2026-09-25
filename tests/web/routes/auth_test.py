@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from google_auth_oauthlib.flow import WSGITimeoutError
+
 from gphotometasync.web import session as web_session
 from gphotometasync.web.routes import auth
 
@@ -62,3 +64,19 @@ def test_sign_in_stores_the_token_and_starts_a_session(
     assert resp.status_code == 302
     assert web_session.COOKIE_NAME in resp.headers["Set-Cookie"]
     assert (data_dir / "credentials" / "google_token.json").is_file()
+
+
+def test_abandoned_sign_in_times_out_with_a_clear_message(client, monkeypatch, tmp_path) -> None:
+    secrets = tmp_path / "client_secrets.json"
+    secrets.write_text("{}")
+    monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRETS", str(secrets))
+
+    def time_out(self):
+        raise WSGITimeoutError("Timed out waiting for response from authorization server")
+
+    monkeypatch.setattr(auth.GooglePhotosOAuth, "run_local_server", time_out)
+
+    page = client.get("/auth", follow_redirects=True).get_data(as_text=True)
+
+    assert "Sign-in timed out" in page
+    assert not web_session.picker_sessions
