@@ -96,6 +96,9 @@ def convert_to_degrees(value: Any) -> Optional[float]:
             def get_fraction(frac: Any) -> float:
                 if hasattr(frac, "numerator") and hasattr(frac, "denominator"):
                     return frac.numerator / frac.denominator
+                if isinstance(frac, (tuple, list)) and len(frac) == 2:  # piexif (num, den)
+                    num, den = frac
+                    return num / den if den else 0.0
                 if isinstance(frac, (int, float)):
                     return float(frac)
                 return 0.0

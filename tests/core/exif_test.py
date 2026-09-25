@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime
 from pathlib import Path
 
 import piexif
+import pytest
 from PIL import Image
 
-from gphotometasync.core.exif import process_image_extract_and_embed
+from gphotometasync.core.exif import convert_to_degrees, process_image_extract_and_embed
 from gphotometasync.core.metadata_fields import ExifFieldConfig, build_exif_field_config
 
 
@@ -66,6 +68,29 @@ def test_file_date_matches_capture_date(make_jpeg) -> None:
     assert os.path.getmtime(result["output_image"]) == datetime(2019, 1, 2, 3, 4, 5).timestamp()
 
 
+def test_json_sidecar_has_readable_values_and_decimal_gps(make_jpeg) -> None:
+    src = make_jpeg(
+        "trip.jpg",
+        {
+            "0th": {piexif.ImageIFD.Make: b"Cam"},
+            "GPS": {
+                piexif.GPSIFD.GPSLatitudeRef: b"S",
+                piexif.GPSIFD.GPSLatitude: ((33, 1), (30, 1), (0, 1)),
+                piexif.GPSIFD.GPSLongitudeRef: b"E",
+                piexif.GPSIFD.GPSLongitude: ((151, 1), (15, 1), (0, 1)),
+            },
+        },
+    )
+    result = process_image_extract_and_embed(
+        src, src.parent / "out", build_exif_field_config({}), write_json=True
+    )
+    sidecar = json.loads(Path(result["json_path"]).read_text(encoding="utf-8"))
+
+    assert sidecar["0th"]["Make"] == "Cam"
+    assert sidecar["GPS"]["LatitudeDecimal"] == -33.5
+    assert sidecar["GPS"]["LongitudeDecimal"] == 151.25
+
+
 def test_output_stem_and_suffix_control_the_output_name(make_jpeg) -> None:
     result = process_image_extract_and_embed(
         make_jpeg("upload_0_IMG.jpg"),
@@ -84,3 +109,10 @@ def test_unreadable_image_reports_an_error(tmp_path: Path) -> None:
     src.write_bytes(b"not an image")
 
     assert "error" in _export(src, build_exif_field_config({}))
+
+
+def test_convert_to_degrees_handles_rationals_and_bad_input() -> None:
+    assert convert_to_degrees(((10, 1), (30, 1), (36, 1))) == pytest.approx(10.51)  # piexif
+    assert convert_to_degrees((10, 30, 36)) == pytest.approx(10.51)
+    assert convert_to_degrees(None) is None
+    assert convert_to_degrees("garbage") is None
