@@ -103,6 +103,11 @@ class Settings:
         return self.app_data_dir / "credentials" / "google_token.json"
 
     @property
+    def metadata_preferences_path(self) -> Path:
+        """Per-user metadata choices shared by local and Google Photos workflows."""
+        return self.app_data_dir / "settings" / "metadata_preferences.json"
+
+    @property
     def upload_dir(self) -> Path:
         return self.data_dir / "uploads"
 

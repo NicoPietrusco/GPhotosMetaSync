@@ -4,7 +4,7 @@
   const pickFilesBtn = document.getElementById("local-pick-files");
   const pickFolderBtn = document.getElementById("local-pick-folder");
   const fileLabelText = document.getElementById("local-file-label-text");
-  const includeJson = document.getElementById("local-include-json");
+  const includeJson = document.getElementById("metadata-include-json");
   const includeJsonField = document.getElementById("local-include-json-field");
   const stemField = document.getElementById("local-stem-suffix");
   const localPreview = document.getElementById("local-preview");

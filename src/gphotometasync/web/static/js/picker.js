@@ -70,7 +70,7 @@ async function extractAllExif() {
         return;
     }
     const btn = document.getElementById('extract-exif-btn');
-    const includeJson = document.getElementById('google-include-json');
+    const includeJson = document.getElementById('metadata-include-json');
     if (btn) btn.disabled = true;
     showStatus(`Saving metadata for ${loadedPickerItems.length} photo(s)…`, 'info');
     try {

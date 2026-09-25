@@ -36,7 +36,11 @@ from werkzeug.serving import make_server
 from werkzeug.utils import secure_filename
 
 from ..core.photo_utils import process_uploaded_image
-from ..exif_config import load_exif_field_config
+from ..exif_config import (
+    load_metadata_preferences,
+    load_user_exif_field_config,
+    save_metadata_preferences,
+)
 from ..settings import settings
 from ..utils.file_utils import ensure_directory, is_image_file
 from ..utils.logger_utils import get_logger, setup_logger
@@ -218,11 +222,28 @@ def create_app() -> Flask:
         return {
             "settings": settings,
             "google_oauth_ready": settings.google_oauth_client_secrets_path.is_file(),
+            "metadata_preferences": load_metadata_preferences(settings.metadata_preferences_path),
         }
 
     @app.route("/")
     def index():
-        return render_template("index.html")
+        return render_template(
+            "index.html",
+            metadata_preferences=load_metadata_preferences(settings.metadata_preferences_path),
+        )
+
+    @app.post("/api/metadata-preferences")
+    def api_save_metadata_preferences():
+        body = request.get_json(silent=True) or {}
+        preferences = body.get("preferences")
+        if not isinstance(preferences, dict):
+            return jsonify({"ok": False, "detail": "preferences must be an object"}), 400
+        try:
+            saved = save_metadata_preferences(preferences, settings.metadata_preferences_path)
+        except OSError as e:
+            logger.exception("Could not save metadata preferences")
+            return jsonify({"ok": False, "detail": str(e)}), 500
+        return jsonify({"ok": True, "preferences": saved})
 
     @app.get("/auth")
     def auth():
@@ -353,7 +374,7 @@ def create_app() -> Flask:
         job_out = output_dir / job
         ensure_directory(job_out)
         job_out_res = job_out.resolve()
-        field_config = load_exif_field_config()
+        field_config = load_user_exif_field_config(settings.metadata_preferences_path)
 
         processed = 0
         errors: list[str] = []
@@ -610,7 +631,7 @@ def create_app() -> Flask:
         dest = upload_dir / f"{job}_{name}"
         dest.write_bytes(raw)
 
-        field_config = load_exif_field_config()
+        field_config = load_user_exif_field_config(settings.metadata_preferences_path)
         result = process_uploaded_image(dest, job_out, field_config, write_json=include_json)
         if result.get("error"):
             return jsonify({"detail": result["error"]}), 500
@@ -641,7 +662,7 @@ def create_app() -> Flask:
 
         ensure_fresh(creds)
         pdata.credentials_json = creds.to_json()
-        field_config = load_exif_field_config()
+        field_config = load_user_exif_field_config(settings.metadata_preferences_path)
 
         job_id = str(uuid.uuid4())
         job_out = output_dir / job_id
