@@ -4,7 +4,7 @@
   <section class="job-hero">
     <p class="eyebrow">Batch complete</p>
     <h1>Your files are ready.</h1>
-    <p class="job-summary">Download one archive to keep the original photo dates when you extract the files.</p>
+    <p class="job-summary">Download one archive to keep each photo and video’s original date when you extract the files.</p>
     <p class="job-file-count" aria-label="Batch summary">
       <strong>{{ file_count }}</strong> file{% if file_count != 1 %}s{% endif %}
       {%- set parts = [] -%}
@@ -20,7 +20,7 @@
   {% if file_count %}
   <div class="job-actions job-actions--save">
     <a class="btn btn-primary" href="{{ url_for('jobs.download_zip', job_id=job_id) }}">Download ZIP</a>
-    <span class="job-actions-hint">Your browser saves the ZIP to Downloads by default. Extract it to preserve each photo’s capture date as its file modification date; change the download folder in your browser settings if needed.</span>
+    <span class="job-actions-hint">Your browser saves the ZIP to Downloads by default. Extract it to preserve each file’s capture date as its modification date; change the download folder in your browser settings if needed.</span>
   </div>
   {% endif %}
   </section>

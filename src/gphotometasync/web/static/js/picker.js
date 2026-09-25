@@ -20,6 +20,16 @@ function hideStatus() {
     document.getElementById('status').style.display = 'none';
 }
 
+/** "12 photos · 1 video" — Picker items are typed PHOTO or VIDEO. */
+function describeSelection(items) {
+    const videos = items.filter((item) => item.type === 'VIDEO').length;
+    const photos = items.length - videos;
+    const parts = [];
+    if (photos || !videos) parts.push(`${photos} photo${photos !== 1 ? 's' : ''}`);
+    if (videos) parts.push(`${videos} video${videos !== 1 ? 's' : ''}`);
+    return parts.join(' · ');
+}
+
 function itemToPayload(item) {
     const baseUrl =
         item.baseUrl ||
@@ -96,7 +106,7 @@ function exportProgress(total) {
     const startedAt = Date.now();
     bar.max = total;
     bar.value = 0;
-    label.textContent = 'Saving metadata…';
+    label.textContent = 'Exporting…';
     count.textContent = `0 of ${total}`;
     detail.textContent = 'Keep this page open until it finishes.';
     box.hidden = false;
@@ -124,7 +134,7 @@ function exportProgress(total) {
     };
 }
 
-/** POST one chunk. A 500 that still names the job means only this chunk's photos failed. */
+/** POST one chunk. A 500 that still names the job means only this chunk's items failed. */
 async function exportChunk(chunk, jobId, includeJson) {
     const r = await fetch('/api/process-google-batch', {
         method: 'POST',
@@ -143,7 +153,7 @@ async function exportChunk(chunk, jobId, includeJson) {
 
 async function extractAllExif() {
     if (!loadedPickerItems.length) {
-        showStatus('Load photos first (choose photos, then wait for the list).', 'error');
+        showStatus('Choose photos or videos first, then wait for the list.', 'error');
         return;
     }
     const btn = document.getElementById('extract-exif-btn');
@@ -194,7 +204,7 @@ async function extractAllExif() {
     } catch (e) {
         window.removeEventListener('beforeunload', warnBeforeLeaving);
         progress.hide();
-        showStatus(`Something went wrong after ${done} of ${total} photos: ${e.message}`, 'error');
+        showStatus(`Something went wrong after ${done} of ${total}: ${e.message}`, 'error');
         if (btn) btn.disabled = false;
         if (pickerBtn) pickerBtn.disabled = false;
         return;
@@ -203,7 +213,7 @@ async function extractAllExif() {
     window.removeEventListener('beforeunload', warnBeforeLeaving);
     if (saved === 0) {
         progress.hide();
-        showStatus('None of the photos could be saved. Check the terminal logs for details.', 'error');
+        showStatus('Nothing could be exported. Check the terminal logs for details.', 'error');
         if (btn) btn.disabled = false;
         if (pickerBtn) pickerBtn.disabled = false;
         return;
@@ -295,7 +305,7 @@ async function openPicker() {
             throw new Error('Popup blocked. Please allow popups for this site.');
         }
 
-        showStatus('Choose photos in the new window, then wait for them to appear here.', 'success');
+        showStatus('Choose photos or videos in the new window, then wait for them to appear here.', 'success');
 
         pollSessionStatus(sessionData.pollInterval);
     } catch (error) {
@@ -305,14 +315,14 @@ async function openPicker() {
 
 async function handlePickerResponse(data) {
     console.log('Handling picker response:', data);
-    showStatus('Loading your photos…', 'info');
+    showStatus('Loading your selection…', 'info');
 
     try {
         const mediaItems = data.mediaItems || [];
         displayPhotos(mediaItems);
     } catch (error) {
         console.error('Error handling picker response:', error);
-        showStatus(`Couldn't load photos: ${error.message}`, 'error');
+        showStatus(`Couldn't load your selection: ${error.message}`, 'error');
     }
 }
 
@@ -325,17 +335,16 @@ function displayPhotos(items) {
         container.innerHTML = `
             <div class="empty-state">
                 <div class="empty-state-icon">📷</div>
-                <h3>No photos yet</h3>
-                <p>Use “Choose photos”, pick images in the popup, then they’ll show up here.</p>
+                <h3>Nothing selected yet</h3>
+                <p>Use “Choose photos & videos”, pick items in the popup, then they’ll show up here.</p>
             </div>
         `;
-        document.getElementById('photo-count').textContent = '0 photos';
-        showStatus('No photos in this list.', 'info');
+        document.getElementById('photo-count').textContent = 'Nothing selected';
+        showStatus('Nothing selected yet.', 'info');
         return;
     }
 
-    document.getElementById('photo-count').textContent =
-        `${items.length} photo${items.length !== 1 ? 's' : ''}`;
+    document.getElementById('photo-count').textContent = describeSelection(items);
 
     const grid = document.createElement('div');
     grid.className = 'photos-grid';
@@ -395,7 +404,7 @@ function displayPhotos(items) {
     container.innerHTML = '';
     container.appendChild(grid);
     setLoadedPickerItems(items);
-    showStatus(`Loaded ${items.length} photo${items.length !== 1 ? 's' : ''}.`, 'success');
+    showStatus(`Loaded ${describeSelection(items)}.`, 'success');
 }
 
 async function pollSessionStatus(pollInterval) {
@@ -439,7 +448,7 @@ async function loadSelectedPhotos() {
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({}));
-            throw new Error(error.detail || error.error || 'Failed to load photos');
+            throw new Error(error.detail || error.error || 'Failed to load your selection');
         }
 
         const data = await response.json();
@@ -449,16 +458,15 @@ async function loadSelectedPhotos() {
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-state-icon">📷</div>
-                    <h3>No photos yet</h3>
-                    <p>Use “Choose photos”, pick images in the popup, then they’ll show up here.</p>
+                    <h3>Nothing selected yet</h3>
+                    <p>Use “Choose photos & videos”, pick items in the popup, then they’ll show up here.</p>
                 </div>
             `;
-            document.getElementById('photo-count').textContent = '0 photos';
+            document.getElementById('photo-count').textContent = 'Nothing selected';
             return;
         }
 
-        document.getElementById('photo-count').textContent =
-            `${data.count} photo${data.count !== 1 ? 's' : ''}`;
+        document.getElementById('photo-count').textContent = describeSelection(data.items);
 
         const grid = document.createElement('div');
         grid.className = 'photos-grid';
@@ -502,7 +510,7 @@ async function loadSelectedPhotos() {
         container.innerHTML = '';
         container.appendChild(grid);
         setLoadedPickerItems(data.items);
-        showStatus(`Loaded ${data.count} photo${data.count !== 1 ? 's' : ''}.`, 'success');
+        showStatus(`Loaded ${describeSelection(data.items)}.`, 'success');
     } catch (error) {
         setLoadedPickerItems([]);
         document.getElementById('photos-content').innerHTML = `
