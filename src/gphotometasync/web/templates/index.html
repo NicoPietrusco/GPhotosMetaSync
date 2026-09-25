@@ -51,7 +51,7 @@
       <li>Create an OAuth client (type <strong>Desktop app</strong>) under <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Credentials</a>.</li>
       <li>Download the JSON file and save it as <code>credentials/client_secrets.json</code> (or set <code>GOOGLE_OAUTH_CLIENT_SECRETS</code> to its full path).</li>
     </ol>
-    <p>Full instructions: <a href="https://github.com/NicoPietrusco/GPhotosMetaSync/blob/main/README.md#google-photos-local-desktop--picker-api" target="_blank" rel="noopener">README</a> · <a href="https://github.com/NicoPietrusco/GPhotosMetaSync/blob/main/credentials/README.md" target="_blank" rel="noopener">credentials guide</a>.</p>
+    <p>Full instructions: <a href="https://github.com/NicoPietrusco/GPhotosMetaSync/blob/main/README.md#google-photos-and-privacy" target="_blank" rel="noopener">README</a> · <a href="https://github.com/NicoPietrusco/GPhotosMetaSync/blob/main/docs/google-oauth-setup.md" target="_blank" rel="noopener">credentials guide</a>.</p>
   </div>
   {% endif %}
 </section>
@@ -71,7 +71,7 @@
     <span class="privacy-chip">On this device</span>
   </header>
   <p class="source-panel-copy">If a photo still contains its capture date in EXIF, create a copy whose file date matches it. Missing dates cannot be recovered; originals stay untouched.</p>
-  <form id="local-upload-form" method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data">
+  <form id="local-upload-form" method="post" action="{{ url_for('jobs.upload') }}" enctype="multipart/form-data">
     <div class="local-pick-mode" role="group" aria-label="Pick files or a folder">
       <span class="local-pick-mode-label">Select</span>
       <div class="local-pick-toggle">

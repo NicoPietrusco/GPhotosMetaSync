@@ -16,12 +16,12 @@ import piexif
 from PIL import Image
 from PIL.ExifTags import GPSTAGS, TAGS
 
-from ..exif_config import ExifFieldConfig
-from ..settings import settings
-from ..utils.file_utils import ensure_directory, get_json_output_path, serialize_exif_value
-from ..utils.logger_utils import get_logger
+from ..log import get_logger
+from .metadata_fields import ExifFieldConfig, load_exif_field_config
 
 logger = get_logger(__name__)
+
+EXIF_DATE_FORMAT = "%Y:%m:%d %H:%M:%S"
 
 IFD_CLASS_MAP: dict[str, type] = {
     "0th": piexif.ImageIFD,
@@ -62,9 +62,20 @@ def _serialize_tag_value(val: Any) -> Any:
         except UnicodeDecodeError:
             pass
         return {"__bytes_b64__": base64.standard_b64encode(val).decode("ascii")}
-    if isinstance(val, tuple):
-        return tuple(_serialize_tag_value(v) for v in val)
-    return serialize_exif_value(val)
+    if isinstance(val, (tuple, list)):
+        return [_serialize_tag_value(v) for v in val]
+    if hasattr(val, "numerator") and hasattr(val, "denominator"):  # PIL IFDRational
+        try:
+            return float(val)
+        except ZeroDivisionError:
+            return str(val)
+    if isinstance(val, dict):
+        return {k: _serialize_tag_value(v) for k, v in val.items()}
+    try:
+        json.dumps(val)
+        return val
+    except TypeError:
+        return str(val)
 
 
 def _deserialize_tag_value(val: Any) -> Any:
@@ -295,7 +306,7 @@ def load_exif_nested(
 
 def extract_exif_data(
     image_path: Path,
-    output_dir: Path | None = None,
+    output_dir: Path,
     field_config: ExifFieldConfig | None = None,
     write_json: bool = True,
     json_stem_name: str | None = None,
@@ -307,8 +318,6 @@ def extract_exif_data(
     aligning names with output images from a chosen original basename). Otherwise the
     stem of image_path is used (legacy behaviour for Google / temp uploads).
     """
-    from ..exif_config import load_exif_field_config
-
     if field_config is None:
         field_config = load_exif_field_config()
 
@@ -330,15 +339,8 @@ def extract_exif_data(
         display["_file_info"] = file_info
         display["_meta"] = {"used_piexif": used_piexif}
 
-        output_dir = output_dir or settings.DEFAULT_OUTPUT_DIR
-        ensure_directory(output_dir)
-        if write_json:
-            if json_stem_name is not None:
-                json_path = output_dir / f"{json_stem_name}{settings.JSON_SUFFIX}"
-            else:
-                json_path = get_json_output_path(image_path, output_dir)
-        else:
-            json_path = None
+        output_dir.mkdir(parents=True, exist_ok=True)
+        json_path = output_dir / f"{json_stem_name or image_path.stem}.json" if write_json else None
 
         if json_path:
             with open(json_path, "w", encoding="utf-8") as f:
@@ -377,8 +379,6 @@ def embed_exif_subset(
 
     Returns True when output_path was written, even if no tags survived the filter.
     """
-    from ..exif_config import load_exif_field_config
-
     if field_config is None:
         field_config = load_exif_field_config()
 
@@ -395,7 +395,7 @@ def embed_exif_subset(
                 del filtered["Exif"]
 
         raw = nested_named_to_piexif_raw(filtered)
-        ensure_directory(output_path.parent)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         suffix = image_path.suffix.lower()
         if not raw:
             # Still write the photo, but never carry over tags the user excluded.
@@ -424,55 +424,6 @@ def embed_exif_subset(
         return False
 
 
-def embed_exif_dates(image_path: Path, output_dir: Path) -> bool:
-    """
-    Legacy: copy image with DateTime* fields normalized (uses full piexif load).
-    """
-    try:
-        from ..utils.file_utils import get_dated_output_path
-
-        with Image.open(image_path) as img:
-            exif_data = img.getexif()
-            date = None
-            for tag_name in ("DateTimeOriginal", "DateTimeDigitized", "DateTime"):
-                tag_id = next((t for t, n in TAGS.items() if n == tag_name), None)
-                if tag_id and tag_id in exif_data:
-                    date = exif_data[tag_id]
-                    break
-
-        if not date:
-            logger.warning(f"No EXIF date found for {image_path.name}")
-            return False
-
-        try:
-            date_str = date if isinstance(date, str) else str(date)
-            dt = datetime.strptime(date_str, settings.EXIF_DATE_FORMAT)
-            timestamp = dt.timestamp()
-        except Exception as e:
-            logger.warning(f"Could not parse date '{date}' for {image_path.name}: {e}")
-            return False
-
-        exif_dict = piexif.load(str(image_path))
-        date_bytes = date_str.encode()
-        if "Exif" not in exif_dict or exif_dict["Exif"] is None:
-            exif_dict["Exif"] = {}
-        exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = date_bytes
-        exif_dict["Exif"][piexif.ExifIFD.DateTimeDigitized] = date_bytes
-        if "0th" not in exif_dict or exif_dict["0th"] is None:
-            exif_dict["0th"] = {}
-        exif_dict["0th"][piexif.ImageIFD.DateTime] = date_bytes
-
-        ensure_directory(output_dir)
-        output_path = get_dated_output_path(image_path, output_dir)
-        piexif.insert(piexif.dump(exif_dict), str(image_path), str(output_path))
-        os.utime(output_path, (timestamp, timestamp))
-        logger.info(f"Updated EXIF & filesystem date for {image_path.name} → {output_path.name}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to update {image_path.name}: {e}")
-        return False
-
-
 def apply_exif_timestamp(output_path: Path, nested_exif: dict[str, dict[str, Any]]) -> bool:
     """Set an output file's modification time from its best available EXIF capture date."""
     candidates = (
@@ -486,7 +437,7 @@ def apply_exif_timestamp(output_path: Path, nested_exif: dict[str, dict[str, Any
             continue
         date_str = raw.decode("ascii", errors="ignore") if isinstance(raw, bytes) else str(raw)
         try:
-            timestamp = datetime.strptime(date_str, settings.EXIF_DATE_FORMAT).timestamp()
+            timestamp = datetime.strptime(date_str, EXIF_DATE_FORMAT).timestamp()
             os.utime(output_path, (timestamp, timestamp))
             return True
         except (OSError, ValueError) as e:
@@ -511,13 +462,11 @@ def process_image_extract_and_embed(
 
     Returns paths and status for Flask / API use.
     """
-    from ..exif_config import load_exif_field_config
-
     if field_config is None:
         field_config = load_exif_field_config()
 
     output_dir = Path(output_dir)
-    ensure_directory(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     stem_base = output_stem if output_stem is not None else image_path.stem
     if output_stem is not None:

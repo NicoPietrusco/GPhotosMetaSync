@@ -1,57 +1,23 @@
 """
-Application settings and constants for GPhotoMetaSync.
+Application settings: paths, limits and environment overrides.
 """
 
 import os
 import secrets
 import sys
 from pathlib import Path
-from typing import Set
 
 
 class Settings:
     """Application-wide settings and constants."""
 
-    # App info (shown in the web UI)
+    # Shown in the web UI
     APP_NAME = "Photo Meta Sync"
-    APP_VERSION = "0.1.0"
-    APP_DESCRIPTION = "Save dates, camera info, and location from your photos—on this computer or from Google Photos."
 
-    # Supported image formats
-    SUPPORTED_FORMATS: Set[str] = {
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".tiff",
-        ".tif",
-        ".bmp",
-        ".webp",
-        ".heic",
-        ".heif",
-    }
-
-    # Default directories
-    DEFAULT_OUTPUT_DIR = Path("output")
-    DEFAULT_INPUT_DIR = Path("input")
-    DEFAULT_DATA_DIR = Path("data")
-
-    # EXIF date format
-    EXIF_DATE_FORMAT = "%Y:%m:%d %H:%M:%S"
-
-    # Log format
-    LOG_FORMAT = (
-        "<green>{time:HH:mm:ss}</green> | "
-        "<level>{level:<8}</level> | "
-        "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - {message}"
+    # Accepted image extensions (HEIC/HEIF need the optional pillow-heif)
+    SUPPORTED_FORMATS = frozenset(
+        {".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".webp", ".heic", ".heif"}
     )
-
-    # Progress bar settings
-    PROGRESS_DESC_EXTRACT = "📸 Processing images"
-    PROGRESS_DESC_EMBED = "🕒 Embedding EXIF"
-
-    # File suffixes
-    JSON_SUFFIX = ".json"
-    DATED_SUFFIX = "_dated"
 
     # Web / Flask (override via environment)
     @property
@@ -116,11 +82,6 @@ class Settings:
         return self.data_dir / "outputs"
 
     @property
-    def base_dir(self) -> Path:
-        """Backward-compatible alias for the directory containing app resources."""
-        return self.resource_dir
-
-    @property
     def resource_dir(self) -> Path:
         """Directory containing read-only application resources."""
         bundle_dir = getattr(sys, "_MEIPASS", None)
@@ -140,28 +101,15 @@ class Settings:
         if sys.platform == "darwin":
             return home / "Library" / "Application Support" / "GPhotoMetaSync"
         if os.name == "nt":
-            return Path(os.environ.get("LOCALAPPDATA", home / "AppData" / "Local")) / "GPhotoMetaSync"
+            return (
+                Path(os.environ.get("LOCALAPPDATA", home / "AppData" / "Local")) / "GPhotoMetaSync"
+            )
         return Path(os.environ.get("XDG_DATA_HOME", home / ".local" / "share")) / "gphotometasync"
 
     @property
     def data_dir(self) -> Path:
         """Get the data directory."""
         return self.app_data_dir / "data"
-
-    @property
-    def docs_dir(self) -> Path:
-        """Get the documentation directory."""
-        return self.base_dir / "docs"
-
-    @property
-    def tests_dir(self) -> Path:
-        """Get the tests directory."""
-        return self.base_dir / "tests"
-
-    def ensure_directories(self) -> None:
-        """Ensure all necessary directories exist."""
-        for dir_path in [self.DEFAULT_OUTPUT_DIR, self.data_dir, self.docs_dir]:
-            dir_path.mkdir(parents=True, exist_ok=True)
 
 
 # Global settings instance

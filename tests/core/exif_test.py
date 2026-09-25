@@ -1,4 +1,4 @@
-"""Tests for gphotometasync.core.exif_utils."""
+"""Tests for gphotometasync.core.exif."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from pathlib import Path
 import piexif
 from PIL import Image
 
-from gphotometasync.core.exif_utils import process_image_extract_and_embed
-from gphotometasync.exif_config import ExifFieldConfig, build_exif_field_config
+from gphotometasync.core.exif import process_image_extract_and_embed
+from gphotometasync.core.metadata_fields import ExifFieldConfig, build_exif_field_config
 
 
 def _export(src: Path, config: ExifFieldConfig) -> dict:

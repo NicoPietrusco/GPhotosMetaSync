@@ -47,7 +47,7 @@ jobs:
           mkdir -p credentials
           printf '%s' "$GOOGLE_OAUTH_CLIENT_JSON" > credentials/client_secrets.json
       - name: Build application
-        run: uv run pyinstaller --noconfirm --clean GPhotoMetaSync.spec
+        run: uv run pyinstaller --noconfirm --clean packaging/pyinstaller.spec
       - name: Package macOS disk image
         if: runner.os == 'macOS'
         run: hdiutil create -volname "Photo Meta Sync" -srcfolder "dist/Photo Meta Sync.app" -ov -format UDZO "dist/PhotoMetaSync-macOS-${{ matrix.arch }}.dmg"

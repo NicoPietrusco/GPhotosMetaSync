@@ -71,16 +71,25 @@ just setup
 just web
 ```
 
-For Google Photos when running from source, follow the maintainer setup in [credentials/README.md](credentials/README.md).
+For Google Photos when running from source, follow the maintainer setup in [docs/google-oauth-setup.md](docs/google-oauth-setup.md).
 
 ## Development
 
 ```bash
 just lint
 just typecheck
+just test
 just format
 just package
 ```
+
+| Path | Contents |
+| --- | --- |
+| `src/gphotometasync/core/` | EXIF processing, metadata field selection (`metadata_fields.yaml`), export jobs |
+| `src/gphotometasync/google_photos/` | Google OAuth and Picker API client |
+| `src/gphotometasync/web/` | Flask app factory, blueprints in `routes/`, templates and static files |
+| `tests/` | Mirrors `src/gphotometasync/`: one `*_test.py` per module |
+| `packaging/` | PyInstaller spec for the desktop releases |
 
 The release workflow builds Apple Silicon macOS, Intel macOS, and Windows artifacts when a `v*` tag is pushed.
 
