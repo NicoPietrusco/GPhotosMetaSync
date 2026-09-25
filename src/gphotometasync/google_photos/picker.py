@@ -48,12 +48,22 @@ def get_picker_session(creds: Credentials, session_id: str) -> dict[str, Any]:
 
 
 def list_media_items(creds: Credentials, session_id: str) -> dict[str, Any]:
-    ensure_fresh(creds)
-    headers = {"Authorization": f"Bearer {creds.token}"}
-    params = {"sessionId": session_id, "pageSize": 100}
-    r = requests.get(f"{PICKER_BASE}/mediaItems", headers=headers, params=params, timeout=60)
-    r.raise_for_status()
-    return r.json()
+    """Every picked item, following nextPageToken (a selection can span many pages)."""
+    items: list[dict[str, Any]] = []
+    page_token: str | None = None
+    while True:
+        ensure_fresh(creds)
+        headers = {"Authorization": f"Bearer {creds.token}"}
+        params: dict[str, Any] = {"sessionId": session_id, "pageSize": 100}
+        if page_token:
+            params["pageToken"] = page_token
+        r = requests.get(f"{PICKER_BASE}/mediaItems", headers=headers, params=params, timeout=60)
+        r.raise_for_status()
+        page = r.json()
+        items.extend(page.get("mediaItems") or [])
+        page_token = page.get("nextPageToken")
+        if not page_token:
+            return {"mediaItems": items}
 
 
 def transform_picker_items(raw: dict[str, Any]) -> list[dict[str, Any]]:

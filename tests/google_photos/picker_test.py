@@ -71,6 +71,34 @@ def test_list_media_items_queries_the_session(monkeypatch, fake_response, creden
     assert seen["headers"]["Authorization"] == "Bearer access-token"
 
 
+def test_list_media_items_follows_every_page(monkeypatch, fake_response, credentials) -> None:
+    pages = {
+        None: {"mediaItems": [{"id": str(i)} for i in range(100)], "nextPageToken": "p2"},
+        "p2": {"mediaItems": [{"id": "100"}], "nextPageToken": "p3"},
+        "p3": {},  # the last page may omit mediaItems
+    }
+    tokens: list[str | None] = []
+
+    def fake_get(url: str, **kwargs: Any):
+        token = kwargs["params"].get("pageToken")
+        tokens.append(token)
+        return fake_response(json_body=pages[token])
+
+    monkeypatch.setattr(picker.requests, "get", fake_get)
+
+    items = picker.list_media_items(credentials, "sess")["mediaItems"]
+
+    assert len(items) == 101
+    assert tokens == [None, "p2", "p3"]
+
+
+def test_list_media_items_stops_on_http_errors(monkeypatch, fake_response, credentials) -> None:
+    monkeypatch.setattr(picker.requests, "get", lambda url, **kw: fake_response(status_code=500))
+
+    with pytest.raises(picker.requests.HTTPError):
+        picker.list_media_items(credentials, "sess")
+
+
 def test_session_ids_are_url_escaped() -> None:
     assert picker._session_url("a/b?c") == f"{picker.PICKER_BASE}/sessions/a%2Fb%3Fc"
 
