@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
+import piexif
 import pytest
 
 from gphotometasync.core.jobs import get_job_dir, list_job_files
@@ -184,3 +187,142 @@ def test_offset_must_be_a_non_negative_integer(signed_in_client, offset) -> None
     )
 
     assert resp.status_code == 400
+
+
+CREATE_TIME = "2022-08-05T14:03:22.123456789Z"
+CREATE_TS = datetime(2022, 8, 5, 14, 3, 22, tzinfo=UTC).timestamp()
+
+
+def _post_batch(client, *items: dict) -> dict:
+    resp = client.post(
+        "/api/process-google-batch", json={"items": list(items), "include_json": False}
+    )
+    return resp.get_json()
+
+
+def _job_file(job_id: str, suffix: str) -> Path:
+    job_dir = get_job_dir(job_id)
+    return next(job_dir / n for n in list_job_files(job_dir) if n.endswith(suffix))
+
+
+def _fake_video_download(monkeypatch, content: bytes = b"\x00\x00\x00\x18ftypmp42video-bytes"):
+    calls: list[str] = []
+
+    def download(url: str, token: str, dest: Path) -> None:
+        calls.append(url)
+        dest.write_bytes(content)
+
+    monkeypatch.setattr(picker, "download_video_to", download)
+    monkeypatch.setattr(
+        picker, "download_media_bytes", lambda *a: pytest.fail("videos must not use =d")
+    )
+    return calls
+
+
+def test_videos_are_exported_unchanged_and_dated(signed_in_client, monkeypatch) -> None:
+    _fake_video_download(monkeypatch)
+
+    body = _post_batch(
+        signed_in_client,
+        {
+            "base_url": GOOGLE_URL,
+            "filename": "VID_20220805_160322.mp4",
+            "type": "VIDEO",
+            "mime_type": "video/mp4",
+            "create_time": CREATE_TIME,
+            "processing_status": "READY",
+        },
+    )
+
+    video = _job_file(body["job_id"], "VID_20220805_160322.mp4")
+    assert body["processed"] == 1
+    assert video.read_bytes() == b"\x00\x00\x00\x18ftypmp42video-bytes"
+    assert abs(video.stat().st_mtime - CREATE_TS) < 1
+
+
+def test_video_extension_comes_from_the_mime_type_when_missing(
+    signed_in_client, monkeypatch
+) -> None:
+    _fake_video_download(monkeypatch)
+
+    body = _post_batch(
+        signed_in_client,
+        {
+            "base_url": GOOGLE_URL,
+            "filename": "clip",
+            "type": "VIDEO",
+            "mime_type": "video/quicktime",
+        },
+    )
+
+    assert _job_file(body["job_id"], "clip.mov").is_file()
+
+
+@pytest.mark.parametrize(
+    ("status", "message"), [("PROCESSING", "still processing"), ("FAILED", "could not")]
+)
+def test_unready_videos_are_reported(
+    signed_in_client, monkeypatch, status: str, message: str
+) -> None:
+    calls = _fake_video_download(monkeypatch)
+
+    body = _post_batch(
+        signed_in_client,
+        {"base_url": GOOGLE_URL, "filename": "v.mp4", "type": "VIDEO", "processing_status": status},
+    )
+
+    assert message in body["errors"][0]["error"]
+    assert calls == []
+
+
+def test_interrupted_video_download_leaves_no_partial_file(signed_in_client, monkeypatch) -> None:
+    def broken(url: str, token: str, dest: Path) -> None:
+        dest.write_bytes(b"half")
+        raise ConnectionError("connection reset")
+
+    monkeypatch.setattr(picker, "download_video_to", broken)
+
+    body = _post_batch(
+        signed_in_client, {"base_url": GOOGLE_URL, "filename": "v.mp4", "type": "VIDEO"}
+    )
+
+    assert body["errors"][0]["error"] == "connection reset"
+    assert list_job_files(get_job_dir(body["job_id"])) == []
+
+
+def test_photo_without_exif_date_uses_google_create_time(
+    signed_in_client, monkeypatch, make_jpeg
+) -> None:
+    monkeypatch.setattr(picker, "download_media_bytes", lambda url, token: make_jpeg().read_bytes())
+
+    body = _post_batch(
+        signed_in_client,
+        {
+            "base_url": GOOGLE_URL,
+            "filename": "Screenshot.jpg",
+            "type": "PHOTO",
+            "create_time": CREATE_TIME,
+        },
+    )
+
+    assert abs(_job_file(body["job_id"], ".jpg").stat().st_mtime - CREATE_TS) < 1
+
+
+def test_exif_capture_date_wins_over_google_create_time(
+    signed_in_client, monkeypatch, make_jpeg
+) -> None:
+    photo = make_jpeg(exif={"Exif": {piexif.ExifIFD.DateTimeOriginal: b"2019:01:02 03:04:05"}})
+    monkeypatch.setattr(picker, "download_media_bytes", lambda url, token: photo.read_bytes())
+
+    body = _post_batch(
+        signed_in_client,
+        {
+            "base_url": GOOGLE_URL,
+            "filename": "IMG.jpg",
+            "type": "PHOTO",
+            "create_time": CREATE_TIME,
+        },
+    )
+
+    mtime = _job_file(body["job_id"], ".jpg").stat().st_mtime
+    assert mtime == datetime(2019, 1, 2, 3, 4, 5).timestamp()

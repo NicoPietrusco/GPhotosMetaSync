@@ -49,20 +49,20 @@ def friendly_job_filename(filename: str) -> str:
     return m.group(1) if m else filename
 
 
-def categorize_job_files(names: list[str]) -> tuple[list[str], list[str], list[str]]:
-    """Split output names into images, JSON sidecars, and other."""
-    images: list[str] = []
-    jsons: list[str] = []
-    others: list[str] = []
+def categorize_job_files(names: list[str]) -> dict[str, list[str]]:
+    """Split output names into images, videos, JSON sidecars, and other."""
+    groups: dict[str, list[str]] = {"images": [], "videos": [], "jsons": [], "others": []}
     for n in names:
         suf = Path(n).suffix.lower()
         if suf == ".json":
-            jsons.append(n)
+            groups["jsons"].append(n)
         elif suf in settings.SUPPORTED_FORMATS:
-            images.append(n)
+            groups["images"].append(n)
+        elif suf in settings.VIDEO_FORMATS:
+            groups["videos"].append(n)
         else:
-            others.append(n)
-    return images, jsons, others
+            groups["others"].append(n)
+    return groups
 
 
 @bp.post("/upload")
@@ -177,7 +177,7 @@ def result(job_id: str):
         flash("Those files aren't available anymore. Start from the home page.", "error")
         return redirect(url_for("home.index"))
     names = list_job_files(base)
-    images, jsons, others = categorize_job_files(names)
+    groups = categorize_job_files(names)
 
     def _items(ns: list[str]) -> list[dict[str, str]]:
         # Sort by the displayed name: stored names start with the job's item index.
@@ -190,9 +190,10 @@ def result(job_id: str):
         job_id=job_id,
         failed=max(request.args.get("failed", 0, type=int), 0),
         file_count=len(names),
-        image_files=_items(images),
-        json_files=_items(jsons),
-        other_files=_items(others),
+        image_files=_items(groups["images"]),
+        video_files=_items(groups["videos"]),
+        json_files=_items(groups["jsons"]),
+        other_files=_items(groups["others"]),
         download_manifest=[
             {"path": n, "url": url_for("jobs.serve_file", job_id=job_id, filename=n)} for n in names
         ],

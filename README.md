@@ -1,16 +1,17 @@
 # Photo Meta Sync
 
-Keep the date, camera details, and location inside your photos.
+Keep the dates and camera details of your photos and videos.
 
-Photo Meta Sync exports selected photos from Google Photos while keeping their available capture metadata. Download one ZIP to preserve each photo's file date when you extract it.
+Photo Meta Sync exports selected photos and videos from Google Photos while keeping their available capture metadata. Download one ZIP to preserve each file's date when you extract it.
 
 ![Photo Meta Sync home screen](docs/images/photo-meta-sync-home.png)
 
 ## What You Get
 
-- Export selected photos from Google Photos on your computer; there is no hosted service.
-- Keep capture date in the image whenever it exists in the source.
-- Choose whether to retain camera details and GPS location in **Settings**.
+- Export selected photos and videos from Google Photos on your computer; there is no hosted service.
+- Keep capture date in the image whenever it exists in the source. Photos without one (screenshots, images from messaging apps) are dated with the time Google Photos records for them.
+- Videos are exported as Google provides them and dated with their Google Photos time. Google only offers a high-quality transcoded copy of each video, not the original file.
+- Choose whether to retain camera details and GPS location in **Settings**. Google removes location from every photo it downloads, so GPS can only be kept for photos restored from your computer.
 - Optionally include a readable JSON sidecar; it is off by default.
 - Repair file dates on photos already on your device, as long as their EXIF capture date is present.
 

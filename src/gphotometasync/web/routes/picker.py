@@ -10,15 +10,24 @@ from flask import Blueprint, Response, jsonify, request, session, url_for
 from werkzeug.utils import secure_filename
 
 from ...core.exif import process_image_extract_and_embed
-from ...core.jobs import get_job_dir, is_image_file, new_job, staged_file
-from ...core.metadata_fields import load_user_exif_field_config
+from ...core.jobs import (
+    get_job_dir,
+    is_image_file,
+    is_video_file,
+    new_job,
+    set_file_date,
+    staged_file,
+)
+from ...core.metadata_fields import ExifFieldConfig, load_user_exif_field_config
 from ...google_photos.picker import (
     create_picker_session,
     download_media_bytes,
+    download_video_to,
     ensure_fresh,
     get_picker_session,
     is_google_media_host,
     is_google_media_url,
+    is_video,
     list_media_items,
     transform_picker_items,
 )
@@ -126,6 +135,82 @@ def list_selected():
     return jsonify({"items": items, "count": len(items)})
 
 
+_VIDEO_EXTENSIONS = {
+    "video/mp4": ".mp4",
+    "video/quicktime": ".mov",
+    "video/x-m4v": ".m4v",
+    "video/3gpp": ".3gp",
+    "video/webm": ".webm",
+    "video/x-matroska": ".mkv",
+    "video/x-msvideo": ".avi",
+}
+
+
+def _export_photo(
+    index: int,
+    filename: str,
+    base_url: str,
+    access_token: str,
+    job_id: str,
+    job_out: Path,
+    field_config: ExifFieldConfig,
+    include_json: bool,
+    create_time: str | None,
+) -> str | None:
+    """Download a photo and write the filtered-EXIF copy. Returns an error message or None."""
+    try:
+        raw = download_media_bytes(base_url, access_token)
+    except Exception as e:
+        return str(e)
+    stem = secure_filename(filename) or "photo.jpg"
+    if not is_image_file(Path(stem)):
+        stem = "photo.jpg"
+    with staged_file(job_id, index, stem) as dest:
+        dest.write_bytes(raw)
+        result = process_image_extract_and_embed(
+            dest, job_out, field_config, write_json=include_json
+        )
+    if result.get("error"):
+        return result["error"]
+    if not result.get("filesystem_date_set"):
+        # No EXIF capture date (screenshots, messaging apps): fall back to Google's date.
+        set_file_date(Path(result["output_image"]), create_time)
+    return None
+
+
+def _export_video(
+    item: dict,
+    index: int,
+    filename: str,
+    base_url: str,
+    access_token: str,
+    job_id: str,
+    job_out: Path,
+    create_time: str | None,
+) -> str | None:
+    """Download a video unchanged, dated with Google's createTime. Returns an error or None."""
+    status = item.get("processing_status")
+    if status == "PROCESSING":
+        return "Google is still processing this video; try again later"
+    if status == "FAILED":
+        return "Google could not process this video"
+
+    name = secure_filename(filename) or "video"
+    if not is_video_file(Path(name)):
+        mime_type = str(item.get("mime_type") or "").lower()
+        name = f"{Path(name).stem or 'video'}{_VIDEO_EXTENSIONS.get(mime_type, '.mp4')}"
+    output = job_out / f"{job_id}_{index}_{name}"
+    partial = output.with_name(output.name + ".part")  # never list a half-downloaded video
+    try:
+        download_video_to(base_url, access_token, partial)
+        partial.replace(output)
+    except Exception as e:
+        partial.unlink(missing_ok=True)
+        return str(e)
+    set_file_date(output, create_time)
+    return None
+
+
 @bp.post("/api/process-google-batch")
 def process_batch():
     """
@@ -180,22 +265,26 @@ def process_batch():
             errors.append({"index": i, "filename": filename, "error": "invalid base_url"})
             continue
 
-        try:
-            raw = download_media_bytes(base_url, access_token)
-        except Exception as e:
-            errors.append({"index": i, "filename": filename, "error": str(e)})
-            continue
-
-        stem = secure_filename(filename) or "photo.jpg"
-        if not is_image_file(Path(stem)):
-            stem = "photo.jpg"
-        with staged_file(job_id, i, stem) as dest:
-            dest.write_bytes(raw)
-            result = process_image_extract_and_embed(
-                dest, job_out, field_config, write_json=include_json
+        raw_time = it.get("create_time")
+        create_time = raw_time if isinstance(raw_time, str) else None
+        if is_video(it.get("type"), it.get("mime_type")):
+            error = _export_video(
+                it, i, filename, base_url, access_token, job_id, job_out, create_time
             )
-        if result.get("error"):
-            errors.append({"index": i, "filename": stem, "error": result["error"]})
+        else:
+            error = _export_photo(
+                i,
+                filename,
+                base_url,
+                access_token,
+                job_id,
+                job_out,
+                field_config,
+                include_json,
+                create_time,
+            )
+        if error:
+            errors.append({"index": i, "filename": filename, "error": error})
         else:
             processed += 1
 

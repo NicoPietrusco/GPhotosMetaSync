@@ -1,6 +1,6 @@
 // Google Photos Picker — local desktop OAuth (server session); no GIS / no Bearer from the browser
 let authenticated = false;
-/** @type {{ base_url: string, filename: string }[]} */
+/** @type {{ base_url: string, filename: string, type: ?string, mime_type: ?string, create_time: ?string, processing_status: ?string }[]} */
 let loadedPickerItems = [];
 
 function showStatus(message, type) {
@@ -30,7 +30,14 @@ function itemToPayload(item) {
         item.filename ||
         (item.mediaFile && item.mediaFile.filename) ||
         'photo.jpg';
-    return { base_url: baseUrl, filename };
+    return {
+        base_url: baseUrl,
+        filename,
+        type: item.type || null,
+        mime_type: item.mimeType || null,
+        create_time: item.mediaMetadata?.creationTime || null,
+        processing_status: item.videoProcessingStatus || null,
+    };
 }
 
 /**
