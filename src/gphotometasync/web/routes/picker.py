@@ -10,7 +10,7 @@ from flask import Blueprint, Response, jsonify, request, session, url_for
 from werkzeug.utils import secure_filename
 
 from ...core.exif import process_image_extract_and_embed
-from ...core.jobs import is_image_file, new_job, staging_path
+from ...core.jobs import is_image_file, new_job, staged_file
 from ...core.metadata_fields import load_user_exif_field_config
 from ...google_photos.picker import (
     create_picker_session,
@@ -172,12 +172,11 @@ def process_batch():
         stem = secure_filename(filename) or "photo.jpg"
         if not is_image_file(Path(stem)):
             stem = "photo.jpg"
-        dest = staging_path(job_id, i, stem)
-        dest.write_bytes(raw)
-
-        result = process_image_extract_and_embed(
-            dest, job_out, field_config, write_json=include_json
-        )
+        with staged_file(job_id, i, stem) as dest:
+            dest.write_bytes(raw)
+            result = process_image_extract_and_embed(
+                dest, job_out, field_config, write_json=include_json
+            )
         if result.get("error"):
             errors.append({"index": i, "filename": stem, "error": result["error"]})
         else:

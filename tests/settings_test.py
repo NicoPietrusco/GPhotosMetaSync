@@ -68,3 +68,9 @@ def test_frozen_secret_key_is_generated_once_and_private(
     assert len(first) >= 32
     assert settings.secret_key == first
     assert stat.S_IMODE(key_file.stat().st_mode) == 0o600
+
+
+def test_job_retention_defaults_to_one_day(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("JOB_RETENTION_HOURS", raising=False)
+
+    assert settings.job_retention_hours == 24
