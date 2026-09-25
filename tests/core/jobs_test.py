@@ -6,7 +6,7 @@ import io
 import os
 import time
 import zipfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -15,10 +15,12 @@ from gphotometasync.core.jobs import (
     build_job_zip,
     get_job_dir,
     is_image_file,
+    is_video_file,
     list_job_files,
     new_job,
     prune_expired_jobs,
     resolve_job_file,
+    set_file_date,
     staged_file,
 )
 
@@ -123,3 +125,38 @@ def test_zip_contains_every_file_with_its_capture_date(tmp_path: Path) -> None:
 
 def test_empty_job_zip_is_valid(tmp_path: Path) -> None:
     assert zipfile.ZipFile(io.BytesIO(build_job_zip(tmp_path).read())).namelist() == []
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "2022-08-05T14:03:22Z",
+        "2022-08-05T14:03:22.123Z",
+        "2022-08-05T14:03:22.123456789Z",  # Google may send nanoseconds
+        "2022-08-05T16:03:22+02:00",
+    ],
+)
+def test_set_file_date_accepts_google_create_times(tmp_path: Path, value: str) -> None:
+    path = tmp_path / "clip.mp4"
+    path.write_bytes(b"x")
+
+    assert set_file_date(path, value)
+    expected = datetime(2022, 8, 5, 14, 3, 22, tzinfo=UTC).timestamp()
+    assert abs(os.path.getmtime(path) - expected) < 1
+
+
+@pytest.mark.parametrize("value", [None, "", "yesterday"])
+def test_set_file_date_ignores_missing_or_invalid_values(tmp_path: Path, value) -> None:
+    path = tmp_path / "clip.mp4"
+    path.write_bytes(b"x")
+    before = os.path.getmtime(path)
+
+    assert not set_file_date(path, value)
+    assert os.path.getmtime(path) == before
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"), [("clip.MOV", True), ("clip.mp4", True), ("a.jpg", False)]
+)
+def test_is_video_file(name: str, expected: bool) -> None:
+    assert is_video_file(Path(name)) is expected

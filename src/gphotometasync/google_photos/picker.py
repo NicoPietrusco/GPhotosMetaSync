@@ -5,6 +5,7 @@ Google Photos Picker API (REST): sessions, selected items and media download.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 
@@ -73,12 +74,15 @@ def transform_picker_items(raw: dict[str, Any]) -> list[dict[str, Any]]:
         mf = item.get("mediaFile") or {}
         meta = mf.get("mediaFileMetadata") or {}
         photo_meta = meta.get("photoMetadata") or {}
+        video_meta = meta.get("videoMetadata") or {}
         out.append(
             {
                 "id": item.get("id"),
+                "type": item.get("type"),  # PHOTO | VIDEO
                 "baseUrl": mf.get("baseUrl"),
                 "mimeType": mf.get("mimeType"),
                 "filename": mf.get("filename"),
+                "videoProcessingStatus": video_meta.get("processingStatus"),
                 "mediaMetadata": {
                     "creationTime": item.get("createTime"),
                     "width": meta.get("width"),
@@ -104,18 +108,27 @@ def is_google_media_url(raw_url: str) -> bool:
     return parsed.scheme == "https" and is_google_media_host(parsed.hostname or "")
 
 
-def _download_url(base_url: str) -> str:
-    """Append =d for download with metadata (see Picker docs)."""
+def is_video(item_type: str | None, mime_type: str | None) -> bool:
+    """Picker items are videos when typed VIDEO (or, without a type, by MIME type)."""
+    if item_type:
+        return item_type.upper() == "VIDEO"
+    return bool(mime_type and mime_type.lower().startswith("video/"))
+
+
+def _download_url(base_url: str, video: bool = False) -> str:
+    """
+    Append the download parameter: =d for photos (all EXIF except location) or =dv for
+    videos (Google's high-quality transcode). =d on a video only returns a still frame.
+    """
+    param = "=dv" if video else "=d"
     u = base_url.strip()
-    if u.endswith("=d"):
-        return u
     if "=" in u:
-        return u.rsplit("=", 1)[0] + "=d"
-    return u + "=d"
+        u = u.rsplit("=", 1)[0]
+    return u + param
 
 
 def download_media_bytes(base_url: str, access_token: str) -> bytes:
-    """Download the original bytes of a picked item."""
+    """Download a picked photo with its metadata."""
     r = requests.get(
         _download_url(base_url),
         headers={"Authorization": f"Bearer {access_token}"},
@@ -123,3 +136,17 @@ def download_media_bytes(base_url: str, access_token: str) -> bytes:
     )
     r.raise_for_status()
     return r.content
+
+
+def download_video_to(base_url: str, access_token: str, dest: Path) -> None:
+    """Stream a picked video to dest without holding it in memory."""
+    with requests.get(
+        _download_url(base_url, video=True),
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=120,
+        stream=True,
+    ) as r:
+        r.raise_for_status()
+        with dest.open("wb") as f:
+            for chunk in r.iter_content(chunk_size=1 << 20):
+                f.write(chunk)

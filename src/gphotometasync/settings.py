@@ -19,6 +19,9 @@ class Settings:
         {".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".webp", ".heic", ".heif"}
     )
 
+    # Videos are exported as downloaded from Google (never re-encoded here)
+    VIDEO_FORMATS = frozenset({".mp4", ".mov", ".m4v", ".3gp", ".avi", ".mkv", ".webm"})
+
     # Web / Flask (override via environment)
     @property
     def secret_key(self) -> str:

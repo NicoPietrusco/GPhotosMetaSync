@@ -5,12 +5,15 @@ Export jobs: each job is a folder of processed photos under data/outputs/<uuid>.
 from __future__ import annotations
 
 import io
+import os
+import re
 import shutil
 import time
 import uuid
 import zipfile
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 
 from werkzeug.utils import secure_filename
@@ -24,6 +27,32 @@ logger = get_logger(__name__)
 def is_image_file(path: Path) -> bool:
     """True when the extension is one of the supported image formats."""
     return path.suffix.lower() in settings.SUPPORTED_FORMATS
+
+
+def is_video_file(path: Path) -> bool:
+    """True when the extension is one of the exported video formats."""
+    return path.suffix.lower() in settings.VIDEO_FORMATS
+
+
+_FRACTION_RE = re.compile(r"(\.\d{6})\d+")
+
+
+def set_file_date(path: Path, rfc3339: str | None) -> bool:
+    """
+    Set path's modification time from an RFC 3339 timestamp such as Google's createTime
+    ("2022-08-05T14:03:22.123456789Z"). Returns False when the value is missing or invalid.
+    """
+    if not rfc3339:
+        return False
+    # Google may send up to 9 fractional digits; datetime accepts at most 6.
+    text = _FRACTION_RE.sub(r"\1", rfc3339.strip()).replace("Z", "+00:00")
+    try:
+        timestamp = datetime.fromisoformat(text).timestamp()
+        os.utime(path, (timestamp, timestamp))
+    except (ValueError, OSError) as e:
+        logger.warning("Could not set file date of {} from {!r}: {}", path.name, rfc3339, e)
+        return False
+    return True
 
 
 def new_job() -> tuple[str, Path]:

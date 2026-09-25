@@ -83,13 +83,13 @@ def test_result_page_lists_the_job_files(client, make_jpeg) -> None:
 @pytest.mark.parametrize(
     ("query", "notice"),
     [
-        ("?failed=2", "2 photos couldn"),
-        ("?failed=1", "1 photo couldn"),
+        ("?failed=2", "2 items couldn"),
+        ("?failed=1", "1 item couldn"),
         ("", None),
         ("?failed=-3", None),
     ],
 )
-def test_result_page_reports_photos_that_failed(client, make_jpeg, query: str, notice) -> None:
+def test_result_page_reports_items_that_failed(client, make_jpeg, query: str, notice) -> None:
     body = _upload(client, [(make_jpeg().read_bytes(), "IMG.jpg")], include_json="false").get_json()
 
     page = client.get(body["job_url"] + query).get_data(as_text=True)
@@ -152,8 +152,23 @@ def test_friendly_job_filename_strips_the_storage_prefix() -> None:
 
 
 def test_categorize_job_files() -> None:
-    assert categorize_job_files(["a.jpg", "a.json", "notes.txt", "b.HEIC"]) == (
-        ["a.jpg", "b.HEIC"],
-        ["a.json"],
-        ["notes.txt"],
-    )
+    assert categorize_job_files(["a.jpg", "a.json", "notes.txt", "b.HEIC", "clip.MOV"]) == {
+        "images": ["a.jpg", "b.HEIC"],
+        "videos": ["clip.MOV"],
+        "jsons": ["a.json"],
+        "others": ["notes.txt"],
+    }
+
+
+def test_result_page_lists_videos_separately(client, data_dir) -> None:
+    job_id = "0f8fad5b-d9cb-469f-a165-70867728950e"
+    job_dir = data_dir / "data" / "outputs" / job_id
+    job_dir.mkdir(parents=True)
+    (job_dir / f"{job_id}_0_IMG_1_exif.jpg").write_bytes(b"x")
+    (job_dir / f"{job_id}_1_VID_1.mp4").write_bytes(b"x")
+
+    page = " ".join(client.get(f"/job/{job_id}").get_data(as_text=True).split())
+
+    assert "files: 1 image, 1 video" in page
+    assert '<h3 class="job-section-title">Videos</h3>' in page
+    assert ">VID_1.mp4<" in page
