@@ -33,6 +33,15 @@ jobs:
           python-version: "3.11"
       - name: Install locked build tools
         run: uv sync --group dev --frozen
+      - name: Check the tag matches the package version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version="$(uv run python -c 'from importlib.metadata import version; print(version("gphotometasync"))')"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package version ${version} in pyproject.toml"
+            exit 1
+          fi
       - name: Run quality checks
         run: |
           uv run ruff check src/ tests/
