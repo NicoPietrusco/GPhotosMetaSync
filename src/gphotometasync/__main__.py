@@ -22,7 +22,8 @@ def main() -> None:
     # Use a stable development port, but avoid collisions in a frozen desktop app.
     default_port = "0" if getattr(sys, "frozen", False) else "5001"
     port = int(os.environ.get("PORT", default_port))
-    server = make_server("127.0.0.1", port, app)
+    # Threaded, so a long export or a pending Google sign-in doesn't freeze the UI.
+    server = make_server("127.0.0.1", port, app, threaded=True)
     url = f"http://127.0.0.1:{server.server_port}"
     logger.info("Photo Meta Sync is running at {}", url)
     threading.Timer(0.2, webbrowser.open, args=(url,)).start()

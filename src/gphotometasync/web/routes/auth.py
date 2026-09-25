@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from flask import Blueprint, flash, jsonify, redirect, url_for
 from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import WSGITimeoutError
 
 from ...google_photos.oauth import SCOPES, GooglePhotosOAuth
 from ...google_photos.picker import ensure_fresh
@@ -26,6 +27,9 @@ def sign_in():
         return redirect(url_for("home.index"))
     try:
         creds = GooglePhotosOAuth().run_local_server()
+    except WSGITimeoutError:
+        flash("Sign-in timed out. Choose Sign in to try again.", "error")
+        return redirect(url_for("home.index"))
     except Exception as e:
         logger.exception("OAuth failed")
         flash(f"Sign-in didn’t finish: {e}", "error")

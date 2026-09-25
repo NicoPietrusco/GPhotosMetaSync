@@ -32,3 +32,4 @@ def test_sign_in_requests_only_read_access_to_picked_items(
     assert seen["path"] == str(secrets)
     assert seen["scopes"] == ["https://www.googleapis.com/auth/photospicker.mediaitems.readonly"]
     assert seen["port"] == 0  # any free port, so it never collides with the app
+    assert seen["timeout_seconds"] == oauth.SIGN_IN_TIMEOUT_SECONDS  # never waits forever
