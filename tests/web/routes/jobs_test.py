@@ -80,6 +80,26 @@ def test_result_page_lists_the_job_files(client, make_jpeg) -> None:
     assert f"/job/{body['job_id']}/download-all" in page
 
 
+@pytest.mark.parametrize(
+    ("query", "notice"),
+    [
+        ("?failed=2", "2 photos couldn"),
+        ("?failed=1", "1 photo couldn"),
+        ("", None),
+        ("?failed=-3", None),
+    ],
+)
+def test_result_page_reports_photos_that_failed(client, make_jpeg, query: str, notice) -> None:
+    body = _upload(client, [(make_jpeg().read_bytes(), "IMG.jpg")], include_json="false").get_json()
+
+    page = client.get(body["job_url"] + query).get_data(as_text=True)
+
+    if notice:
+        assert notice in page
+    else:
+        assert "couldn’t be saved" not in page
+
+
 @pytest.mark.parametrize("job_id", ["..", "not-a-uuid", "00000000-0000-0000-0000-000000000000"])
 def test_unknown_jobs_are_not_served(client, job_id: str) -> None:
     assert client.get(f"/job/{job_id}").status_code == 302
@@ -107,6 +127,19 @@ def test_zip_download_accepts_capture_dates_before_1980(client, make_jpeg) -> No
     assert download.status_code == 200
     assert download.headers["Content-Disposition"].endswith(f"photo-meta-sync-{job_id[:8]}.zip")
     assert zipfile.ZipFile(io.BytesIO(download.data)).namelist() == ["old_scan.jpg"]
+
+
+def test_result_page_lists_files_by_displayed_name(client, data_dir) -> None:
+    job_id = "0f8fad5b-d9cb-469f-a165-70867728950e"
+    job_dir = data_dir / "data" / "outputs" / job_id
+    job_dir.mkdir(parents=True)
+    for i, name in [(0, "IMG_0000"), (1, "IMG_0001"), (10, "IMG_0010"), (100, "IMG_0100")]:
+        (job_dir / f"{job_id}_{i}_{name}_exif.jpg").write_bytes(b"x")
+
+    page = client.get(f"/job/{job_id}").get_data(as_text=True)
+    positions = [page.index(f">IMG_{n}_exif.jpg<") for n in ("0000", "0001", "0010", "0100")]
+
+    assert positions == sorted(positions)
 
 
 def test_friendly_job_filename_strips_the_storage_prefix() -> None:

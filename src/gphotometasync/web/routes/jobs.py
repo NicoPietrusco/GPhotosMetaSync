@@ -180,11 +180,15 @@ def result(job_id: str):
     images, jsons, others = categorize_job_files(names)
 
     def _items(ns: list[str]) -> list[dict[str, str]]:
-        return [{"name": n, "label": friendly_job_filename(n)} for n in ns]
+        # Sort by the displayed name: stored names start with the job's item index.
+        return sorted(
+            ({"name": n, "label": friendly_job_filename(n)} for n in ns), key=lambda f: f["label"]
+        )
 
     return render_template(
         "job.html",
         job_id=job_id,
+        failed=max(request.args.get("failed", 0, type=int), 0),
         file_count=len(names),
         image_files=_items(images),
         json_files=_items(jsons),
