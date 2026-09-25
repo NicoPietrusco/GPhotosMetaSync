@@ -2,25 +2,29 @@
 
 Keep the date, camera details, and location inside your photos.
 
-Photo Meta Sync creates a new copy of each image with its EXIF metadata preserved. Use photos already on your device or choose them from Google Photos, then download one ZIP that keeps the original file dates when extracted.
+Photo Meta Sync exports selected photos from Google Photos while keeping their available capture metadata. Download one ZIP to preserve each photo's file date when you extract it.
 
 ![Photo Meta Sync home screen](docs/images/photo-meta-sync-home.png)
 
 ## What You Get
 
-- Process individual photos or an entire folder.
-- Choose photos from Google Photos without giving the app a cloud backend.
-- Preserve EXIF capture date, camera details, and GPS coordinates when available.
-- Optionally include a readable JSON metadata sidecar.
-- Keep originals unchanged: processed copies use the `_exif` suffix.
+- Export selected photos from Google Photos on your computer; there is no hosted service.
+- Keep capture date in the image whenever it exists in the source.
+- Choose whether to retain camera details and GPS location in **Settings**.
+- Optionally include a readable JSON sidecar; it is off by default.
+- Repair file dates on photos already on your device, as long as their EXIF capture date is present.
 
 ## Use The App
 
-1. Open the app and choose **On this device** or **Google Photos**.
-2. Select the photos to process. Turn on the JSON option only if you need a separate metadata file.
-3. On the results page, choose **Download ZIP** and extract it.
+1. Sign in to Google Photos and choose the photos to export.
+2. Open **Settings** in the top-right to choose whether camera details and GPS are included. Capture date is always kept when available. JSON sidecars are optional and off by default.
+3. Choose **Save metadata**, then **Download ZIP** on the results page and extract it.
 
-The ZIP is intentional: browsers give individually downloaded files the current date. Extracting the ZIP preserves each photo's capture date as its **file modification date**.
+The ZIP is intentional: browsers assign today's date to individual downloads. Extracting the ZIP preserves the photo's capture date as its **file modification date**. Photo Meta Sync cannot recover a capture date that is missing from the source image.
+
+### Already Downloaded Photos?
+
+Expand **Restore dates on downloaded photos** on the home screen and select the files or folder. The app creates new copies with the file date restored from EXIF; originals remain untouched. If the capture date is absent from EXIF, it cannot be restored.
 
 ## Download A Release
 
@@ -48,7 +52,7 @@ xattr -dr com.apple.quarantine "/Applications/Photo Meta Sync.app"
 
 ## Google Photos And Privacy
 
-The app runs only on your computer at `localhost`. Your Google login and photos are used locally; there is no hosted Photo Meta Sync server.
+The app runs only on your computer at `localhost`. Your Google login, selected photos, and metadata preferences are stored or processed locally; there is no hosted Photo Meta Sync server.
 
 For a published desktop release, end users only sign in with their Google account. They do not need a Google Cloud project or their own OAuth credentials.
 
