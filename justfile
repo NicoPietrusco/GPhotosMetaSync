@@ -46,7 +46,7 @@ setup:
 
 [group('Quality')]
 lint:
-    uv run ruff check src/
+    uv run ruff check src/ tests/
 
 [group('Quality')]
 typecheck:
