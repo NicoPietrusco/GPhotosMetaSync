@@ -10,7 +10,7 @@ from flask import Blueprint, Response, jsonify, request, session, url_for
 from werkzeug.utils import secure_filename
 
 from ...core.exif import process_image_extract_and_embed
-from ...core.jobs import is_image_file, new_job, staged_file
+from ...core.jobs import get_job_dir, is_image_file, new_job, staged_file
 from ...core.metadata_fields import load_user_exif_field_config
 from ...google_photos.picker import (
     create_picker_session,
@@ -128,7 +128,13 @@ def list_selected():
 
 @bp.post("/api/process-google-batch")
 def process_batch():
-    """Download and process all selected Google Picker items into one output job folder."""
+    """
+    Download and process Google Picker items into one output job folder.
+
+    The browser sends the selection in chunks to show progress: the first request creates
+    the job, later ones pass its job_id plus the offset of their first item in the whole
+    selection, so file names stay unique across chunks.
+    """
     pair = creds_for_request()
     if not pair:
         return _NOT_AUTHENTICATED
@@ -139,12 +145,23 @@ def process_batch():
     if not isinstance(items, list) or not items:
         return jsonify({"detail": "items must be a non-empty list"}), 400
 
+    offset = body.get("offset", 0)
+    if not isinstance(offset, int) or isinstance(offset, bool) or offset < 0:
+        return jsonify({"detail": "offset must be a non-negative integer"}), 400
+    requested_job = body.get("job_id")
+    if requested_job is None:
+        job_id, job_out = new_job()
+    else:
+        existing = get_job_dir(str(requested_job))
+        if existing is None:
+            return jsonify({"detail": "Unknown job"}), 404
+        job_id, job_out = str(requested_job), existing
+
     field_config = load_user_exif_field_config(settings.metadata_preferences_path)
-    job_id, job_out = new_job()
     processed = 0
     errors: list[dict[str, str | int]] = []
 
-    for i, it in enumerate(items):
+    for i, it in enumerate(items, start=offset):
         # Refresh per item: a long batch can outlive the access token.
         ensure_fresh(creds)
         pdata.credentials_json = creds.to_json()
@@ -184,7 +201,13 @@ def process_batch():
 
     if processed == 0:
         return jsonify(
-            {"ok": False, "detail": "No images processed", "processed": 0, "errors": errors}
+            {
+                "ok": False,
+                "detail": "No images processed",
+                "job_id": job_id,
+                "processed": 0,
+                "errors": errors,
+            }
         ), 500
 
     session["last_job"] = job_id

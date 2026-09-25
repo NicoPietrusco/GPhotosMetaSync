@@ -64,37 +64,146 @@ function setLoadedPickerItems(items) {
     }
 }
 
+// The selection is exported in small chunks so the page can show progress; the server
+// is threaded, so a few chunks run in parallel.
+const EXPORT_CHUNK_SIZE = 3;
+const EXPORT_PARALLEL_REQUESTS = 3;
+
+function warnBeforeLeaving(event) {
+    event.preventDefault();
+    event.returnValue = '';
+}
+
+function formatRemaining(seconds) {
+    if (seconds < 60) return 'less than a minute left';
+    const minutes = Math.round(seconds / 60);
+    return `about ${minutes} minute${minutes !== 1 ? 's' : ''} left`;
+}
+
+function exportProgress(total) {
+    const box = document.getElementById('export-progress');
+    const bar = document.getElementById('export-progress-bar');
+    const label = document.getElementById('export-progress-label');
+    const count = document.getElementById('export-progress-count');
+    const detail = document.getElementById('export-progress-detail');
+    const startedAt = Date.now();
+    bar.max = total;
+    bar.value = 0;
+    label.textContent = 'Saving metadata…';
+    count.textContent = `0 of ${total}`;
+    detail.textContent = 'Keep this page open until it finishes.';
+    box.hidden = false;
+    return {
+        update(done, failed) {
+            bar.value = done;
+            count.textContent = `${done} of ${total}`;
+            const parts = [];
+            if (failed) parts.push(`${failed} couldn’t be saved`);
+            if (done >= EXPORT_CHUNK_SIZE && done < total) {
+                const perPhoto = (Date.now() - startedAt) / 1000 / done;
+                parts.push(formatRemaining(perPhoto * (total - done)));
+            }
+            parts.push('keep this page open until it finishes');
+            const text = parts.join(' · ');
+            detail.textContent = text.charAt(0).toUpperCase() + text.slice(1) + '.';
+        },
+        finish() {
+            label.textContent = 'Opening your files…';
+            detail.textContent = '';
+        },
+        hide() {
+            box.hidden = true;
+        },
+    };
+}
+
+/** POST one chunk. A 500 that still names the job means only this chunk's photos failed. */
+async function exportChunk(chunk, jobId, includeJson) {
+    const r = await fetch('/api/process-google-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            items: chunk.items,
+            offset: chunk.offset,
+            job_id: jobId,
+            include_json: includeJson,
+        }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok && !data.job_id) throw new Error(data.detail || data.error || r.statusText);
+    return data;
+}
+
 async function extractAllExif() {
     if (!loadedPickerItems.length) {
         showStatus('Load photos first (choose photos, then wait for the list).', 'error');
         return;
     }
     const btn = document.getElementById('extract-exif-btn');
-    const includeJson = document.getElementById('metadata-include-json');
-    if (btn) btn.disabled = true;
-    showStatus(`Saving metadata for ${loadedPickerItems.length} photo(s)…`, 'info');
-    try {
-        const r = await fetch('/api/process-google-batch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                items: loadedPickerItems,
-                include_json: !includeJson || includeJson.checked,
-            }),
-        });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.detail || data.error || r.statusText);
-        if (data.errors && data.errors.length) {
-            showStatus(
-                `Saved ${data.processed}. ${data.errors.length} couldn’t be saved (see terminal logs for details).`,
-                'info'
-            );
-        }
-        if (data.job_url) window.location.href = data.job_url;
-    } catch (e) {
-        showStatus(`Something went wrong: ${e.message}`, 'error');
-        if (btn) btn.disabled = false;
+    const pickerBtn = document.getElementById('picker-btn');
+    const includeJsonInput = document.getElementById('metadata-include-json');
+    const includeJson = !includeJsonInput || includeJsonInput.checked;
+    const items = loadedPickerItems.slice();
+    const total = items.length;
+    const chunks = [];
+    for (let offset = 0; offset < total; offset += EXPORT_CHUNK_SIZE) {
+        chunks.push({ offset, items: items.slice(offset, offset + EXPORT_CHUNK_SIZE) });
     }
+
+    if (btn) btn.disabled = true;
+    if (pickerBtn) pickerBtn.disabled = true;
+    hideStatus();
+    const progress = exportProgress(total);
+    window.addEventListener('beforeunload', warnBeforeLeaving);
+
+    let done = 0;
+    let saved = 0;
+    let jobId = null;
+    let aborted = false;
+    const record = (data, chunk) => {
+        done += chunk.items.length;
+        saved += data.processed || 0;
+        progress.update(done, done - saved);
+    };
+
+    try {
+        // The first chunk creates the job; the others add to it.
+        const first = chunks.shift();
+        const firstResult = await exportChunk(first, null, includeJson);
+        jobId = firstResult.job_id;
+        record(firstResult, first);
+        const worker = async () => {
+            while (chunks.length && !aborted) {
+                const chunk = chunks.shift();
+                try {
+                    record(await exportChunk(chunk, jobId, includeJson), chunk);
+                } catch (e) {
+                    aborted = true; // stop the other workers from sending more chunks
+                    throw e;
+                }
+            }
+        };
+        await Promise.all(Array.from({ length: EXPORT_PARALLEL_REQUESTS }, worker));
+    } catch (e) {
+        window.removeEventListener('beforeunload', warnBeforeLeaving);
+        progress.hide();
+        showStatus(`Something went wrong after ${done} of ${total} photos: ${e.message}`, 'error');
+        if (btn) btn.disabled = false;
+        if (pickerBtn) pickerBtn.disabled = false;
+        return;
+    }
+
+    window.removeEventListener('beforeunload', warnBeforeLeaving);
+    if (saved === 0) {
+        progress.hide();
+        showStatus('None of the photos could be saved. Check the terminal logs for details.', 'error');
+        if (btn) btn.disabled = false;
+        if (pickerBtn) pickerBtn.disabled = false;
+        return;
+    }
+    progress.finish();
+    const failed = total - saved;
+    window.location.href = `/job/${encodeURIComponent(jobId)}${failed ? `?failed=${failed}` : ''}`;
 }
 
 function authenticate() {

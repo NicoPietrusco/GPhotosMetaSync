@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from gphotometasync.core.jobs import get_job_dir, list_job_files
 from gphotometasync.web import session as web_session
 from gphotometasync.web.routes import picker
 
@@ -135,3 +136,51 @@ def test_batch_exports_every_item_into_one_job(
 
 def test_batch_requires_items(signed_in_client) -> None:
     assert signed_in_client.post("/api/process-google-batch", json={"items": []}).status_code == 400
+
+
+def _google_items(n: int) -> list[dict[str, str]]:
+    return [{"base_url": GOOGLE_URL, "filename": f"IMG_{i}.jpg"} for i in range(n)]
+
+
+def test_chunks_are_added_to_the_same_job(signed_in_client, monkeypatch, make_jpeg) -> None:
+    photo = make_jpeg().read_bytes()
+    monkeypatch.setattr(picker, "download_media_bytes", lambda url, token: photo)
+
+    def post(body: dict) -> dict:
+        return signed_in_client.post("/api/process-google-batch", json=body).get_json()
+
+    first = post({"items": _google_items(2), "include_json": False})
+    second = post(
+        {"items": _google_items(2), "offset": 2, "job_id": first["job_id"], "include_json": False}
+    )
+
+    assert second["job_id"] == first["job_id"]
+    # Same filenames in both chunks: the offset keeps all four outputs apart.
+    assert len(list_job_files(get_job_dir(first["job_id"]))) == 4
+
+
+def test_error_indexes_are_relative_to_the_whole_selection(signed_in_client) -> None:
+    body = signed_in_client.post(
+        "/api/process-google-batch", json={"items": ["bad"], "offset": 7}
+    ).get_json()
+
+    assert body["errors"] == [{"index": 7, "error": "invalid item"}]
+    assert body["job_id"]  # a fully failed chunk still names its job
+
+
+def test_unknown_job_is_rejected(signed_in_client) -> None:
+    resp = signed_in_client.post(
+        "/api/process-google-batch",
+        json={"items": _google_items(1), "job_id": "00000000-0000-0000-0000-000000000000"},
+    )
+
+    assert resp.status_code == 404
+
+
+@pytest.mark.parametrize("offset", [-1, "3", 1.5, True])
+def test_offset_must_be_a_non_negative_integer(signed_in_client, offset) -> None:
+    resp = signed_in_client.post(
+        "/api/process-google-batch", json={"items": _google_items(1), "offset": offset}
+    )
+
+    assert resp.status_code == 400

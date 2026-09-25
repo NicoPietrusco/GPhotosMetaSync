@@ -540,7 +540,75 @@ html:not(.no-directory-picker) .job-zip-optional {
   margin-bottom: 1rem;
 }
 
-.picker-google-card .photos-container {
+.picker-google-card .export-progress {
+  margin: 0 0 1rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.export-progress[hidden] {
+  display: none;
+}
+
+.export-progress-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.export-progress-count {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.export-progress progress {
+  display: block;
+  width: 100%;
+  height: 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--muted-bg);
+  overflow: hidden;
+  appearance: none;
+}
+
+.export-progress progress::-webkit-progress-bar {
+  background: var(--muted-bg);
+}
+
+.export-progress progress::-webkit-progress-value {
+  background: var(--primary);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.export-progress progress::-moz-progress-bar {
+  background: var(--primary);
+  border-radius: 999px;
+}
+
+.export-progress-detail {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.job-failed-notice {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-sm);
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.photos-container {
   margin-top: 1rem;
   padding: 1rem 0 0;
   border-top: 1px solid var(--border);

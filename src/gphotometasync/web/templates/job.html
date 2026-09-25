@@ -13,6 +13,9 @@
         {% if other_files %}{% if image_files or json_files %}, {% endif %}{{ other_files|length }} other file{% if other_files|length != 1 %}s{% endif %}{% endif %}
       {% endif %}
     </p>
+  {% if failed %}
+    <p class="job-failed-notice" role="status">{{ failed }} photo{% if failed != 1 %}s{% endif %} couldn’t be saved. The rest are ready below.</p>
+  {% endif %}
   {% if file_count %}
   <div class="job-actions job-actions--save">
     <a class="btn btn-primary" href="{{ url_for('jobs.download_zip', job_id=job_id) }}">Download ZIP</a>
