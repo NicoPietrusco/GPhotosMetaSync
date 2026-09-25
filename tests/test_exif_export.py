@@ -136,3 +136,19 @@ def test_bearer_token_is_only_sent_to_google_hosts() -> None:
     assert not _is_allowed_google_media_url("https://evil.example/abc")
     assert not _is_allowed_google_media_url("http://lh3.googleusercontent.com/abc")
     assert not _is_allowed_google_media_url("https://googleusercontent.com.evil.example/x")
+
+
+def test_groups_and_always_kept_tags_come_from_yaml(tmp_path: Path, monkeypatch) -> None:
+    custom = tmp_path / "fields.yaml"
+    custom.write_text(
+        'always_kept: ["Exif:DateTimeOriginal"]\ngroups:\n  lens: ["Exif:LensModel"]\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("EXIF_FIELDS_CONFIG", str(custom))
+    prefs_path = tmp_path / "prefs.json"
+
+    assert save_metadata_preferences({"lens": False, "gps_location": True}, prefs_path) == {
+        "lens": False,
+        "include_json": False,
+    }
+    assert load_user_exif_field_config(prefs_path).tags == ["Exif:DateTimeOriginal"]

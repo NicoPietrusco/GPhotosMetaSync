@@ -1,13 +1,10 @@
-# Default EXIF field selection for extract + embed.
+# EXIF fields copied into exported photos — the single source of truth.
 # Use IFD:TagName (piexif names, e.g. Exif:DateTimeOriginal, 0th:Make).
-# mode: "allowlist" keeps only listed tags; "all" keeps everything except exclude_tags.
+# Override with EXIF_FIELDS_CONFIG=/path/to/file.yaml (same structure).
 
-mode: allowlist
-
-tags:
-  - "0th:Make"
-  - "0th:Model"
-  - "0th:Orientation"
+# Always exported when present, whatever the user picks in Settings.
+always_kept:
+  # Capture date, time zone and sub-seconds
   - "0th:DateTime"
   - "Exif:DateTimeOriginal"
   - "Exif:DateTimeDigitized"
@@ -15,23 +12,29 @@ tags:
   - "Exif:OffsetTimeOriginal"
   - "Exif:OffsetTimeDigitized"
   - "Exif:SubSecTimeOriginal"
-  - "Exif:ExposureTime"
-  - "Exif:FNumber"
-  - "Exif:ISOSpeedRatings"
-  - "Exif:FocalLength"
-  - "Exif:LensModel"
-  - "Exif:Flash"
-  - "Exif:WhiteBalance"
-  - "Exif:ExifVersion"
-  - "GPS:GPSLatitude"
-  - "GPS:GPSLatitudeRef"
-  - "GPS:GPSLongitude"
-  - "GPS:GPSLongitudeRef"
-  - "GPS:GPSAltitude"
-  - "GPS:GPSAltitudeRef"
+  # Dropping it makes photos display rotated
+  - "0th:Orientation"
 
-# When mode is "all", these tag names (IFD:Tag) are dropped.
-exclude_tags: []
+# Optional groups; each key is a toggle in Settings (on by default).
+groups:
+  camera_details:
+    - "0th:Make"
+    - "0th:Model"
+    - "Exif:ExposureTime"
+    - "Exif:FNumber"
+    - "Exif:ISOSpeedRatings"
+    - "Exif:FocalLength"
+    - "Exif:LensModel"
+    - "Exif:Flash"
+    - "Exif:WhiteBalance"
+    - "Exif:ExifVersion"
+  gps_location:
+    - "GPS:GPSLatitude"
+    - "GPS:GPSLatitudeRef"
+    - "GPS:GPSLongitude"
+    - "GPS:GPSLongitudeRef"
+    - "GPS:GPSAltitude"
+    - "GPS:GPSAltitudeRef"
 
 # If true, MakerNote is never embedded (safer for camera-specific blobs).
 skip_makernote_embed: true
