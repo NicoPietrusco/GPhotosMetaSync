@@ -7,6 +7,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -355,6 +356,17 @@ def extract_exif_data(
         return {"error": f"Failed: {e}"}
 
 
+def _save_with_pillow(image_path: Path, output_path: Path, exif_bytes: bytes | None) -> None:
+    """Re-save a non-JPEG image with the given EXIF (or none)."""
+    with Image.open(image_path) as img:
+        save_kw: dict[str, Any] = {}
+        if exif_bytes is not None:
+            save_kw["exif"] = exif_bytes
+        if image_path.suffix.lower() == ".webp":
+            save_kw["quality"] = 95
+        img.save(output_path, format=img.format or "JPEG", **save_kw)
+
+
 def embed_exif_subset(
     image_path: Path,
     output_path: Path,
@@ -362,6 +374,8 @@ def embed_exif_subset(
 ) -> bool:
     """
     Write a new image with EXIF limited to filtered tags (JPEG via piexif.insert).
+
+    Returns True when output_path was written, even if no tags survived the filter.
     """
     from ..exif_config import load_exif_field_config
 
@@ -381,23 +395,26 @@ def embed_exif_subset(
                 del filtered["Exif"]
 
         raw = nested_named_to_piexif_raw(filtered)
-        if not raw:
-            logger.warning(f"No EXIF to embed for {image_path.name}")
-            return False
-
         ensure_directory(output_path.parent)
-        exif_bytes = piexif.dump(raw)
         suffix = image_path.suffix.lower()
+        if not raw:
+            # Still write the photo, but never carry over tags the user excluded.
+            logger.info("No EXIF to embed for {}; saving without EXIF", image_path.name)
+            if not nested:
+                shutil.copyfile(image_path, output_path)
+            elif suffix in {".jpg", ".jpeg"}:
+                shutil.copyfile(image_path, output_path)
+                piexif.remove(str(output_path))
+            else:
+                _save_with_pillow(image_path, output_path, exif_bytes=None)
+            return True
+
+        exif_bytes = piexif.dump(raw)
         if suffix in {".jpg", ".jpeg"}:
             piexif.insert(exif_bytes, str(image_path), str(output_path))
             return True
         try:
-            with Image.open(image_path) as img:
-                fmt = img.format or "JPEG"
-                save_kw: dict[str, Any] = {}
-                if suffix in {".jpg", ".jpeg", ".webp"}:
-                    save_kw["quality"] = 95
-                img.save(output_path, format=fmt, exif=exif_bytes, **save_kw)
+            _save_with_pillow(image_path, output_path, exif_bytes)
             return True
         except Exception as e2:
             logger.warning(f"Pillow EXIF save not supported for {suffix}: {e2}")
@@ -521,7 +538,9 @@ def process_image_extract_and_embed(
     output_image = output_dir / out_name
 
     ok = embed_exif_subset(image_path, output_image, field_config)
-    filesystem_date_set = apply_exif_timestamp(output_image, ext_result["nested_filtered"]) if ok else False
+    if not ok or not output_image.is_file():
+        return {"error": f"Could not save {image_path.suffix.lstrip('.').upper()} image"}
+    filesystem_date_set = apply_exif_timestamp(output_image, ext_result["nested_filtered"])
     return {
         "success": True,
         "image_path": str(image_path),

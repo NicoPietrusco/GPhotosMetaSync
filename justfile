@@ -53,6 +53,10 @@ typecheck:
     uv run ty check src/
 
 [group('Quality')]
+test:
+    uv run pytest
+
+[group('Quality')]
 format:
     uv run ruff format src/
 

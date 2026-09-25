@@ -23,12 +23,17 @@ CAPTURE_DATE_TAGS = (
     "0th:DateTime",
     "Exif:DateTimeOriginal",
     "Exif:DateTimeDigitized",
+    "Exif:OffsetTime",
+    "Exif:OffsetTimeOriginal",
+    "Exif:OffsetTimeDigitized",
+    "Exif:SubSecTimeOriginal",
 )
+# Kept regardless of user choices: dropping Orientation makes photos display rotated.
+ALWAYS_KEPT_TAGS = (*CAPTURE_DATE_TAGS, "0th:Orientation")
 METADATA_FIELD_GROUPS: dict[str, tuple[str, ...]] = {
     "camera_details": (
         "0th:Make",
         "0th:Model",
-        "0th:Orientation",
         "Exif:ExposureTime",
         "Exif:FNumber",
         "Exif:ISOSpeedRatings",
@@ -117,7 +122,7 @@ def load_user_exif_field_config(path: Path | None = None) -> ExifFieldConfig:
         return load_exif_field_config()
 
     preferences = load_metadata_preferences(path)
-    tags = list(CAPTURE_DATE_TAGS)
+    tags = list(ALWAYS_KEPT_TAGS)
     for group, group_tags in METADATA_FIELD_GROUPS.items():
         if preferences[group]:
             tags.extend(group_tags)

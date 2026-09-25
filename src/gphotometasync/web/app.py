@@ -73,6 +73,23 @@ def _is_allowed_google_image_host(hostname: str) -> bool:
     )
 
 
+def _is_allowed_google_media_url(raw_url: str) -> bool:
+    """Only send the OAuth bearer token to https Google media hosts."""
+    parsed = urlparse(raw_url)
+    return parsed.scheme == "https" and _is_allowed_google_image_host(parsed.hostname or "")
+
+
+_LOCAL_HOSTNAMES = {"127.0.0.1", "localhost", "[::1]"}
+
+
+def _is_local_host_header(host: str) -> bool:
+    """DNS-rebinding guard: the app only answers requests addressed to loopback."""
+    hostname = host.lower()
+    if not hostname.endswith("]"):  # strip the port, but not from a bare IPv6 literal
+        hostname = hostname.rsplit(":", 1)[0]
+    return hostname in _LOCAL_HOSTNAMES
+
+
 _JOB_FILE_PREFIX_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_\d+_(.+)$",
     re.I,
@@ -216,6 +233,12 @@ def create_app() -> Flask:
     output_dir = settings.web_output_dir
     for d in (data_dir, upload_dir, output_dir):
         ensure_directory(d)
+
+    @app.before_request
+    def reject_non_local_hosts():
+        if not _is_local_host_header(request.host):
+            return "Forbidden", 403
+        return None
 
     @app.context_processor
     def inject_globals() -> dict:
@@ -524,7 +547,8 @@ def create_app() -> Flask:
         if not paths:
             return "No files", 404
         buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        # Capture dates before 1980 are clamped instead of failing the whole download.
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED, strict_timestamps=False) as zf:
             for p in paths:
                 zf.write(p, arcname=p.relative_to(base).as_posix())
         buf.seek(0)
@@ -612,6 +636,8 @@ def create_app() -> Flask:
         filename = (body.get("filename") or "photo.jpg").strip() or "photo.jpg"
         if not base_url:
             return jsonify({"detail": "base_url required"}), 400
+        if not _is_allowed_google_media_url(base_url):
+            return jsonify({"detail": "base_url must be a Google Photos media URL"}), 400
         ensure_fresh(creds)
         pdata.credentials_json = creds.to_json()
         access_token = creds.token
@@ -684,6 +710,9 @@ def create_app() -> Flask:
             filename = (it.get("filename") or "photo.jpg").strip() or "photo.jpg"
             if not base_url:
                 errors.append({"index": i, "error": "missing base_url"})
+                continue
+            if not _is_allowed_google_media_url(base_url):
+                errors.append({"index": i, "filename": filename, "error": "invalid base_url"})
                 continue
 
             try:
