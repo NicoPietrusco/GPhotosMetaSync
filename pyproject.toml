@@ -72,3 +72,8 @@ dev = [
     "ruff>=0.1.0",
     "ty>=0.0.1",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# importlib mode lets tests/<pkg>/ mirror src/ without __init__.py or basename clashes
+addopts = ["--import-mode=importlib"]

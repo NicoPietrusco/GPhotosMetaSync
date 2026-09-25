@@ -35,7 +35,7 @@ jobs:
         run: uv sync --group dev --frozen
       - name: Run quality checks
         run: |
-          uv run ruff check src/
+          uv run ruff check src/ tests/
           uv run ty check src/
           uv run pytest
       - name: Add the release OAuth client
