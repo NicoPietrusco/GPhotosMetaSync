@@ -64,3 +64,23 @@ def test_file_date_matches_capture_date(make_jpeg) -> None:
 
     assert result["filesystem_date_set"]
     assert os.path.getmtime(result["output_image"]) == datetime(2019, 1, 2, 3, 4, 5).timestamp()
+
+
+def test_output_stem_and_suffix_control_the_output_name(make_jpeg) -> None:
+    result = process_image_extract_and_embed(
+        make_jpeg("upload_0_IMG.jpg"),
+        make_jpeg().parent / "out",
+        build_exif_field_config({}),
+        stem_suffix="",
+        output_stem="IMG_1234",
+        write_json=False,
+    )
+
+    assert Path(result["output_image"]).name == "IMG_1234.jpg"
+
+
+def test_unreadable_image_reports_an_error(tmp_path: Path) -> None:
+    src = tmp_path / "broken.jpg"
+    src.write_bytes(b"not an image")
+
+    assert "error" in _export(src, build_exif_field_config({}))
