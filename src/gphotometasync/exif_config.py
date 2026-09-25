@@ -1,5 +1,5 @@
 """
-Loadable EXIF field allowlist / exclusions for extract and embed.
+EXIF field selection for extract and embed, defined in config/default_exif_fields.yaml.
 """
 
 from __future__ import annotations
@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -19,44 +20,6 @@ logger = get_logger(__name__)
 
 _DEFAULT_YAML = Path(__file__).resolve().parent / "config" / "default_exif_fields.yaml"
 
-CAPTURE_DATE_TAGS = (
-    "0th:DateTime",
-    "Exif:DateTimeOriginal",
-    "Exif:DateTimeDigitized",
-    "Exif:OffsetTime",
-    "Exif:OffsetTimeOriginal",
-    "Exif:OffsetTimeDigitized",
-    "Exif:SubSecTimeOriginal",
-)
-# Kept regardless of user choices: dropping Orientation makes photos display rotated.
-ALWAYS_KEPT_TAGS = (*CAPTURE_DATE_TAGS, "0th:Orientation")
-METADATA_FIELD_GROUPS: dict[str, tuple[str, ...]] = {
-    "camera_details": (
-        "0th:Make",
-        "0th:Model",
-        "Exif:ExposureTime",
-        "Exif:FNumber",
-        "Exif:ISOSpeedRatings",
-        "Exif:FocalLength",
-        "Exif:LensModel",
-        "Exif:Flash",
-        "Exif:WhiteBalance",
-        "Exif:ExifVersion",
-    ),
-    "gps_location": (
-        "GPS:GPSLatitude",
-        "GPS:GPSLatitudeRef",
-        "GPS:GPSLongitude",
-        "GPS:GPSLongitudeRef",
-        "GPS:GPSAltitude",
-        "GPS:GPSAltitudeRef",
-    ),
-}
-DEFAULT_METADATA_PREFERENCES = {
-    **{key: True for key in METADATA_FIELD_GROUPS},
-    "include_json": False,
-}
-
 
 @dataclass
 class ExifFieldConfig:
@@ -67,19 +30,50 @@ class ExifFieldConfig:
     exclude_tags: list[str] = field(default_factory=list)
     skip_makernote_embed: bool = True
 
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ExifFieldConfig:
-        return cls(
-            mode=str(data.get("mode", "allowlist")),
-            tags=list(data.get("tags", [])),
-            exclude_tags=list(data.get("exclude_tags", [])),
-            skip_makernote_embed=bool(data.get("skip_makernote_embed", True)),
-        )
+
+@dataclass(frozen=True)
+class MetadataFieldCatalog:
+    """Tags from the YAML config: always kept, plus user-toggleable groups."""
+
+    always_kept: tuple[str, ...]
+    groups: dict[str, tuple[str, ...]]
+    skip_makernote_embed: bool = True
+
+
+def _tag_list(value: Any, where: str) -> tuple[str, ...]:
+    if not isinstance(value, list) or not all(isinstance(t, str) for t in value):
+        raise ValueError(f"{where} must be a list of 'IFD:TagName' strings")
+    return tuple(value)
+
+
+@cache
+def _load_catalog(path: Path) -> MetadataFieldCatalog:
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        raise ValueError(f"{path}: root must be a mapping")
+    groups = data.get("groups") or {}
+    if not isinstance(groups, dict):
+        raise ValueError(f"{path}: groups must be a mapping")
+    return MetadataFieldCatalog(
+        always_kept=_tag_list(data.get("always_kept", []), f"{path}: always_kept"),
+        groups={str(k): _tag_list(v, f"{path}: groups.{k}") for k, v in groups.items()},
+        skip_makernote_embed=bool(data.get("skip_makernote_embed", True)),
+    )
+
+
+def load_field_catalog() -> MetadataFieldCatalog:
+    """Load the bundled YAML, or the file named by EXIF_FIELDS_CONFIG."""
+    return _load_catalog(Path(os.environ.get("EXIF_FIELDS_CONFIG") or _DEFAULT_YAML))
+
+
+def default_metadata_preferences() -> dict[str, bool]:
+    """Every group from the catalog is on by default; the JSON sidecar is off."""
+    return {**{key: True for key in load_field_catalog().groups}, "include_json": False}
 
 
 def load_metadata_preferences(path: Path | None = None) -> dict[str, bool]:
     """Load saved user choices, falling back to the shipped defaults."""
-    preferences = DEFAULT_METADATA_PREFERENCES.copy()
+    preferences = default_metadata_preferences()
     preferences_path = path or settings.metadata_preferences_path
     try:
         data = json.loads(preferences_path.read_text(encoding="utf-8"))
@@ -98,7 +92,7 @@ def save_metadata_preferences(
     preferences: dict[str, Any], path: Path | None = None
 ) -> dict[str, bool]:
     """Validate and persist the user's metadata choices atomically."""
-    normalized = DEFAULT_METADATA_PREFERENCES.copy()
+    normalized = default_metadata_preferences()
     for key in normalized:
         value = preferences.get(key)
         if isinstance(value, bool):
@@ -116,48 +110,21 @@ def save_metadata_preferences(
     return normalized
 
 
-def load_user_exif_field_config(path: Path | None = None) -> ExifFieldConfig:
-    """Build the shared EXIF allowlist from locally saved user preferences."""
-    if os.environ.get("EXIF_FIELDS_CONFIG"):
-        return load_exif_field_config()
-
-    preferences = load_metadata_preferences(path)
-    tags = list(ALWAYS_KEPT_TAGS)
-    for group, group_tags in METADATA_FIELD_GROUPS.items():
-        if preferences[group]:
+def build_exif_field_config(preferences: dict[str, bool]) -> ExifFieldConfig:
+    """Turn user choices into an EXIF allowlist using the YAML catalog."""
+    catalog = load_field_catalog()
+    tags = list(catalog.always_kept)
+    for group, group_tags in catalog.groups.items():
+        if preferences.get(group, True):
             tags.extend(group_tags)
-    return ExifFieldConfig(tags=tags)
+    return ExifFieldConfig(tags=tags, skip_makernote_embed=catalog.skip_makernote_embed)
 
 
-def load_exif_field_config(path: Path | None = None) -> ExifFieldConfig:
-    """
-    Load YAML or JSON config. Falls back to bundled default.
+def load_user_exif_field_config(path: Path | None = None) -> ExifFieldConfig:
+    """Build the EXIF allowlist from locally saved user preferences."""
+    return build_exif_field_config(load_metadata_preferences(path))
 
-    Env: EXIF_FIELDS_CONFIG — path to a YAML/JSON file overriding defaults.
-    """
-    env_path = os.environ.get("EXIF_FIELDS_CONFIG")
-    candidates: list[Path] = []
-    if path is not None:
-        candidates.append(Path(path))
-    if env_path:
-        candidates.append(Path(env_path))
-    candidates.append(_DEFAULT_YAML)
 
-    for candidate in candidates:
-        if not candidate.exists():
-            continue
-        try:
-            text = candidate.read_text(encoding="utf-8")
-            if candidate.suffix.lower() in {".yaml", ".yml"}:
-                data = yaml.safe_load(text) or {}
-            else:
-                data = json.loads(text)
-            if not isinstance(data, dict):
-                raise ValueError("Root must be a mapping")
-            logger.info(f"Loaded EXIF field config from {candidate}")
-            return ExifFieldConfig.from_dict(data)
-        except Exception as e:
-            logger.error(f"Failed to load EXIF config from {candidate}: {e}")
-            raise
-
-    return ExifFieldConfig()
+def load_exif_field_config() -> ExifFieldConfig:
+    """EXIF allowlist with every group enabled (default for programmatic use)."""
+    return build_exif_field_config(default_metadata_preferences())
