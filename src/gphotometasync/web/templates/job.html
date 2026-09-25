@@ -15,7 +15,7 @@
     </p>
   {% if file_count %}
   <div class="job-actions job-actions--save">
-    <a class="btn btn-primary" href="{{ url_for('download_job_zip', job_id=job_id) }}">Download ZIP</a>
+    <a class="btn btn-primary" href="{{ url_for('jobs.download_zip', job_id=job_id) }}">Download ZIP</a>
     <span class="job-actions-hint">Your browser saves the ZIP to Downloads by default. Extract it to preserve each photo’s capture date as its file modification date; change the download folder in your browser settings if needed.</span>
   </div>
   {% endif %}
@@ -33,7 +33,7 @@
   <h3 class="job-section-title">Images</h3>
   <ul class="job-files job-files--scroll">
     {% for f in image_files %}
-    <li><a href="{{ url_for('serve_file', job_id=job_id, filename=f.name) }}" title="{{ f.name }}">{{ f.label }}</a></li>
+    <li><a href="{{ url_for('jobs.serve_file', job_id=job_id, filename=f.name) }}" title="{{ f.name }}">{{ f.label }}</a></li>
     {% endfor %}
   </ul>
   {% endif %}
@@ -43,7 +43,7 @@
     <summary>JSON detail files ({{ json_files|length }}) — tap to expand</summary>
     <ul class="job-files job-files--scroll job-files--compact">
       {% for f in json_files %}
-      <li><a href="{{ url_for('serve_file', job_id=job_id, filename=f.name) }}" title="{{ f.name }}">{{ f.label }}</a></li>
+      <li><a href="{{ url_for('jobs.serve_file', job_id=job_id, filename=f.name) }}" title="{{ f.name }}">{{ f.label }}</a></li>
       {% endfor %}
     </ul>
   </details>
@@ -54,7 +54,7 @@
     <summary>Other files ({{ other_files|length }})</summary>
     <ul class="job-files job-files--scroll job-files--compact">
       {% for f in other_files %}
-      <li><a href="{{ url_for('serve_file', job_id=job_id, filename=f.name) }}" title="{{ f.name }}">{{ f.label }}</a></li>
+      <li><a href="{{ url_for('jobs.serve_file', job_id=job_id, filename=f.name) }}" title="{{ f.name }}">{{ f.label }}</a></li>
       {% endfor %}
     </ul>
   </details>

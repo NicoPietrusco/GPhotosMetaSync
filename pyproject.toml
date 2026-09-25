@@ -5,9 +5,7 @@ description = "Google Photos Metadata Synchronizer - Extract and embed EXIF data
 readme = "README.md"
 requires-python = ">=3.11"
 license = {file = "LICENSE"}
-authors = [
-    {name = "Your Name", email = "your.email@example.com"}
-]
+authors = [{name = "NicoPietrusco"}]
 keywords = ["google-photos", "metadata", "exif", "photos", "sync"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -31,20 +29,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-    "ruff>=0.1.0",
-]
 heic = [
     "pillow-heif>=0.15.0",
 ]
 
 [project.scripts]
-gphotometasync = "gphotometasync.web:main"
+gphotometasync = "gphotometasync.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/GPhotoMetaSync"
-Repository = "https://github.com/yourusername/GPhotoMetaSync.git"
-Issues = "https://github.com/yourusername/GPhotoMetaSync/issues"
+Homepage = "https://github.com/NicoPietrusco/GPhotosMetaSync"
+Repository = "https://github.com/NicoPietrusco/GPhotosMetaSync.git"
+Issues = "https://github.com/NicoPietrusco/GPhotosMetaSync/issues"
 
 [build-system]
 requires = ["hatchling"]
@@ -61,12 +56,8 @@ target-version = "py311"
 select = ["E", "F", "I", "N", "W", "B", "Q"]
 ignore = ["E501"]  # Line too long (handled by formatter)
 
-[tool.uv.sources]
-gphotometasync = { workspace = true }
-
 [dependency-groups]
 dev = [
-    "gphotometasync",
     "pyinstaller>=6.0.0",
     "pytest>=9.1.1",
     "ruff>=0.1.0",

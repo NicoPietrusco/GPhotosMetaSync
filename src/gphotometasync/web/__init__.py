@@ -1,5 +1,1 @@
-"""Flask web interface."""
-
-from .app import create_app, main
-
-__all__ = ["create_app", "main"]
+"""Flask web interface served on localhost."""

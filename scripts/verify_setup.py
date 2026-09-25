@@ -11,7 +11,7 @@ def main() -> None:
         raise SystemExit(
             f"Missing OAuth client JSON: {p}\n"
             "Save Google's Desktop client JSON as credentials/client_secrets.json "
-            "(see credentials/README.md)."
+            "(see docs/google-oauth-setup.md)."
         )
     create_app()
     print("OK: credentials found and app factory loads.")

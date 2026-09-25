@@ -328,16 +328,12 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-dev = [
-    { name = "ruff" },
-]
 heic = [
     { name = "pillow-heif" },
 ]
 
 [package.dev-dependencies]
 dev = [
-    { name = "gphotometasync" },
     { name = "pyinstaller" },
     { name = "pytest" },
     { name = "ruff" },
@@ -356,13 +352,11 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "requests", specifier = ">=2.31.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
 ]
-provides-extras = ["dev", "heic"]
+provides-extras = ["heic"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "gphotometasync", editable = "." },
     { name = "pyinstaller", specifier = ">=6.0.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "ruff", specifier = ">=0.1.0" },

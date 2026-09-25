@@ -5,14 +5,16 @@ import os
 import sys
 from pathlib import Path
 
+from PyInstaller.utils.hooks import copy_metadata
 
-ROOT = Path(SPECPATH)
+ROOT = Path(SPECPATH).parent
 PACKAGE = ROOT / "src" / "gphotometasync"
 
 datas = [
-    (str(PACKAGE / "config" / "default_exif_fields.yaml"), "gphotometasync/config"),
+    (str(PACKAGE / "core" / "metadata_fields.yaml"), "gphotometasync/core"),
     (str(PACKAGE / "web" / "static"), "gphotometasync/web/static"),
     (str(PACKAGE / "web" / "templates"), "gphotometasync/web/templates"),
+    *copy_metadata("gphotometasync"),  # lets importlib.metadata report __version__
 ]
 
 oauth_client = Path(
@@ -24,7 +26,7 @@ else:
     print("Building without a Google OAuth client; Google Photos sign-in will be unavailable.")
 
 a = Analysis(
-    [str(PACKAGE / "desktop.py")],
+    [str(PACKAGE / "__main__.py")],
     pathex=[str(ROOT / "src")],
     binaries=[],
     datas=datas,

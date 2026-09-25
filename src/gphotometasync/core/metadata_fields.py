@@ -1,5 +1,5 @@
 """
-EXIF field selection for extract and embed, defined in config/default_exif_fields.yaml.
+EXIF field selection for extract and embed, defined in metadata_fields.yaml.
 """
 
 from __future__ import annotations
@@ -13,12 +13,12 @@ from typing import Any
 
 import yaml
 
-from .settings import settings
-from .utils.logger_utils import get_logger
+from ..log import get_logger
+from ..settings import settings
 
 logger = get_logger(__name__)
 
-_DEFAULT_YAML = Path(__file__).resolve().parent / "config" / "default_exif_fields.yaml"
+_DEFAULT_YAML = Path(__file__).resolve().with_suffix(".yaml")
 
 
 @dataclass

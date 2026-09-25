@@ -9,7 +9,7 @@
 <body>
   <div class="page">
     <header class="app-header">
-      <a class="brand" href="{{ url_for('index') }}" aria-label="Photo Meta Sync home">
+      <a class="brand" href="{{ url_for('home.index') }}" aria-label="Photo Meta Sync home">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 40 40" focusable="false">
             <rect class="brand-mark-frame" x="7.5" y="7" width="25" height="20" rx="3.5"/>
@@ -94,7 +94,7 @@
     <script src="{{ url_for('static', filename='js/metadata_preferences.js') }}" defer></script>
     {% if request.endpoint and request.endpoint != 'index' %}
     <footer class="site-footer">
-      <a href="{{ url_for('index') }}">← Back to home</a>
+      <a href="{{ url_for('home.index') }}">← Back to home</a>
     </footer>
     {% endif %}
   </div>

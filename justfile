@@ -3,6 +3,9 @@
 
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
+# Release asset naming: arm64 on Apple Silicon, x64 on Intel
+mac_arch := if arch() == "aarch64" { "arm64" } else { "x64" }
+
 # List recipes (run when you type: just)
 default:
     @just --list
@@ -30,12 +33,12 @@ install:
 # Build a local desktop bundle for the current operating system
 [group('Packaging')]
 package:
-    uv run pyinstaller --noconfirm --clean GPhotoMetaSync.spec
+    uv run pyinstaller --noconfirm --clean packaging/pyinstaller.spec
 
 # Create a distributable macOS disk image after `just package`
 [group('Packaging')]
 package-macos: package
-    hdiutil create -volname "Photo Meta Sync" -srcfolder "dist/Photo Meta Sync.app" -ov -format UDZO "dist/PhotoMetaSync-macOS-arm64.dmg"
+    hdiutil create -volname "Photo Meta Sync" -srcfolder "dist/Photo Meta Sync.app" -ov -format UDZO "dist/PhotoMetaSync-macOS-{{mac_arch}}.dmg"
 
 [group('Setup')]
 setup:
@@ -71,5 +74,4 @@ clean:
 [group('Maintenance')]
 clean-all: clean
     rm -rf data/outputs/* data/uploads/* 2>/dev/null || true
-    rm -rf output/*.json output/*_dated.* 2>/dev/null || true
     @echo "Outputs cleaned."

@@ -4,20 +4,11 @@ from __future__ import annotations
 
 import io
 import zipfile
-from pathlib import Path
 
 import piexif
 import pytest
 
-from gphotometasync.web.app import _is_allowed_google_media_url, create_app
-
-
-@pytest.fixture
-def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("GPHOTOMETASYNC_DATA_DIR", str(tmp_path / "appdata"))
-    app = create_app()
-    app.config["TESTING"] = True
-    return app.test_client()
+from gphotometasync.google_photos.picker import is_google_media_url
 
 
 def test_zip_download_accepts_capture_dates_before_1980(client, make_jpeg) -> None:
@@ -48,7 +39,7 @@ def test_foreign_host_header_is_rejected(client) -> None:
 
 
 def test_bearer_token_is_only_sent_to_google_hosts() -> None:
-    assert _is_allowed_google_media_url("https://lh3.googleusercontent.com/abc=w200")
-    assert not _is_allowed_google_media_url("https://evil.example/abc")
-    assert not _is_allowed_google_media_url("http://lh3.googleusercontent.com/abc")
-    assert not _is_allowed_google_media_url("https://googleusercontent.com.evil.example/x")
+    assert is_google_media_url("https://lh3.googleusercontent.com/abc=w200")
+    assert not is_google_media_url("https://evil.example/abc")
+    assert not is_google_media_url("http://lh3.googleusercontent.com/abc")
+    assert not is_google_media_url("https://googleusercontent.com.evil.example/x")
