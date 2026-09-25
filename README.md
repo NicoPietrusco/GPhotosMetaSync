@@ -17,9 +17,9 @@ Photo Meta Sync exports selected photos and videos from Google Photos while keep
 
 ## Use The App
 
-1. Sign in to Google Photos and choose the photos to export.
+1. Sign in to Google Photos and choose the photos and videos to export.
 2. Open **Settings** in the top-right to choose whether camera details and GPS are included. Capture date is always kept when available. JSON sidecars are optional and off by default.
-3. Choose **Save metadata**, then **Download ZIP** on the results page and extract it.
+3. Choose **Export**, then **Download ZIP** on the results page and extract it.
 
 The ZIP is intentional: browsers assign today's date to individual downloads. Extracting the ZIP preserves the photo's capture date as its **file modification date**. Photo Meta Sync cannot recover a capture date that is missing from the source image.
 
