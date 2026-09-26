@@ -92,11 +92,12 @@
     {% endwith %}
     {% block body %}{% endblock %}
     <script src="{{ url_for('static', filename='js/metadata_preferences.js') }}" defer></script>
-    {% if request.endpoint and request.endpoint != 'index' %}
     <footer class="site-footer">
+      {% if request.endpoint != 'home.index' %}
       <a href="{{ url_for('home.index') }}">← Back to home</a>
+      {% endif %}
+      <a class="site-footer-privacy" href="https://nicopietrusco.github.io/GPhotosMetaSync/privacy.html" target="_blank" rel="noopener">Privacy policy</a>
     </footer>
-    {% endif %}
   </div>
 </body>
 </html>

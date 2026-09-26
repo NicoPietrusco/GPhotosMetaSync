@@ -61,6 +61,8 @@ If the app doesn't start, its log is in `%LOCALAPPDATA%\GPhotoMetaSync\logs\phot
 
 ## Google Photos And Privacy
 
+See the [privacy policy](https://nicopietrusco.github.io/GPhotosMetaSync/privacy.html) and the [project site](https://nicopietrusco.github.io/GPhotosMetaSync/).
+
 The app runs only on your computer at `localhost`. Your Google login, selected photos, and metadata preferences are stored or processed locally; there is no hosted Photo Meta Sync server.
 
 Exported copies are kept only so you can download them: the app deletes them after 24 hours (set `JOB_RETENTION_HOURS` to change this). Working copies of the originals are removed as soon as each photo is processed.
