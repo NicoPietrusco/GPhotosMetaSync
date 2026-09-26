@@ -398,51 +398,13 @@ kbd {
   color: var(--text-muted);
 }
 
-/* Job: Save all — folder picker (FS API) vs ZIP fallback */
+/* Job: download actions */
 .job-actions--save {
   align-items: flex-start;
 }
 
 .job-actions--save .job-actions-hint {
   flex-basis: 100%;
-}
-
-.job-save-zip-primary {
-  display: none !important;
-}
-
-html.no-directory-picker .job-save-zip-primary {
-  display: inline-flex !important;
-}
-
-html.no-directory-picker #job-save-all {
-  display: none !important;
-}
-
-.job-hint-fs {
-  display: none;
-}
-
-html:not(.no-directory-picker) .job-hint-fs {
-  display: block;
-}
-
-.job-hint-no-fs {
-  display: none;
-}
-
-html.no-directory-picker .job-hint-no-fs {
-  display: block;
-}
-
-.job-zip-optional {
-  display: none;
-  margin: -0.35rem 0 0.75rem;
-  font-size: 0.875rem;
-}
-
-html:not(.no-directory-picker) .job-zip-optional {
-  display: block;
 }
 
 .job-section-title {

@@ -12,10 +12,11 @@ from pathlib import Path
 import pytest
 
 from hicpicnunc.core.jobs import (
-    build_job_zip,
+    ZIP_CHUNK_SIZE,
     get_job_dir,
     is_image_file,
     is_video_file,
+    iter_job_zip,
     list_job_files,
     new_job,
     prune_expired_jobs,
@@ -116,15 +117,42 @@ def test_zip_contains_every_file_with_its_capture_date(tmp_path: Path) -> None:
         path.write_bytes(b"x")
         os.utime(path, (when.timestamp(), when.timestamp()))
 
-    archive = zipfile.ZipFile(build_job_zip(tmp_path))
+    archive = zipfile.ZipFile(io.BytesIO(b"".join(iter_job_zip(tmp_path))))
 
     assert list_job_files(tmp_path) == ["a.jpg", "trip/b.jpg"]
     assert archive.getinfo("a.jpg").date_time == (2019, 1, 2, 3, 4, 6)
     assert archive.getinfo("trip/b.jpg").date_time[0] == 1980  # ZIP's earliest date
 
 
+def test_zip_stores_files_unchanged(tmp_path: Path) -> None:
+    content = os.urandom(3000)  # like a JPEG or video: incompressible
+    (tmp_path / "clip.mp4").write_bytes(content)
+
+    archive = zipfile.ZipFile(io.BytesIO(b"".join(iter_job_zip(tmp_path))))
+
+    assert archive.getinfo("clip.mp4").compress_type == zipfile.ZIP_STORED
+    assert archive.read("clip.mp4") == content
+    assert archive.testzip() is None
+
+
+def test_zip_streams_large_jobs_in_bounded_chunks(tmp_path: Path) -> None:
+    # 99 videos used to be deflated into RAM before a single byte was sent.
+    for i in range(3):
+        (tmp_path / f"VID_{i}.mp4").write_bytes(os.urandom(ZIP_CHUNK_SIZE * 2 + 123))
+
+    chunks = iter_job_zip(tmp_path)
+    first = next(chunks)
+    rest = list(chunks)
+
+    assert first  # data flows before the whole archive is built
+    assert max(len(c) for c in [first, *rest]) <= ZIP_CHUNK_SIZE + 1024
+    archive = zipfile.ZipFile(io.BytesIO(first + b"".join(rest)))
+    assert sorted(archive.namelist()) == ["VID_0.mp4", "VID_1.mp4", "VID_2.mp4"]
+    assert archive.testzip() is None
+
+
 def test_empty_job_zip_is_valid(tmp_path: Path) -> None:
-    assert zipfile.ZipFile(io.BytesIO(build_job_zip(tmp_path).read())).namelist() == []
+    assert zipfile.ZipFile(io.BytesIO(b"".join(iter_job_zip(tmp_path)))).namelist() == []
 
 
 @pytest.mark.parametrize(
