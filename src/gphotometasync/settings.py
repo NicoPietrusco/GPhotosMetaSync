@@ -113,7 +113,7 @@ class Settings:
         home = Path.home()
         if sys.platform == "darwin":
             return home / "Library" / "Application Support" / "GPhotoMetaSync"
-        if os.name == "nt":
+        if sys.platform == "win32":
             return (
                 Path(os.environ.get("LOCALAPPDATA", home / "AppData" / "Local")) / "GPhotoMetaSync"
             )

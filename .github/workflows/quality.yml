@@ -9,7 +9,13 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    name: check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # Same platforms as the desktop releases, so OS-specific failures show up in PRs.
+        os: [ubuntu-latest, windows-2022, macos-14]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0

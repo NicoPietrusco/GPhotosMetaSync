@@ -29,7 +29,8 @@ def running_server(data_dir, monkeypatch, tmp_path):
     monkeypatch.setenv("PORT", "0")
     thread = threading.Thread(target=entry.main, daemon=True)
     thread.start()
-    assert started.wait(10)
+    # Generous: binding calls socket.getfqdn(), which can take seconds on CI runners.
+    assert started.wait(60)
     yield f"http://127.0.0.1:{servers[0].server_port}"
     servers[0].shutdown()
     thread.join(5)

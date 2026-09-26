@@ -43,6 +43,13 @@ def test_frozen_macos_uses_application_support(
     assert settings.app_data_dir == frozen / "Library" / "Application Support" / "GPhotoMetaSync"
 
 
+def test_frozen_windows_uses_local_app_data(frozen: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setenv("LOCALAPPDATA", str(frozen / "Local"))
+
+    assert settings.app_data_dir == frozen / "Local" / "GPhotoMetaSync"
+
+
 def test_frozen_linux_uses_xdg_data_home(frozen: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setenv("XDG_DATA_HOME", str(frozen / "xdg"))
@@ -67,7 +74,8 @@ def test_frozen_secret_key_is_generated_once_and_private(
 
     assert len(first) >= 32
     assert settings.secret_key == first
-    assert stat.S_IMODE(key_file.stat().st_mode) == 0o600
+    if sys.platform != "win32":  # Windows has no POSIX permission bits
+        assert stat.S_IMODE(key_file.stat().st_mode) == 0o600
 
 
 def test_job_retention_defaults_to_one_day(monkeypatch: pytest.MonkeyPatch) -> None:
