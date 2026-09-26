@@ -1,4 +1,4 @@
-"""Tests for gphotometasync.web.session."""
+"""Tests for hicpicnunc.web.session."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 from flask import Response
 
-from gphotometasync.web import session as web_session
+from hicpicnunc.web import session as web_session
 
 
 def test_no_cookie_means_no_session(app) -> None:

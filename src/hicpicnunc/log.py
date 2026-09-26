@@ -35,6 +35,6 @@ def setup_logger(level: str = "INFO") -> None:
         )
 
 
-def get_logger(name: str = "gphotometasync"):
+def get_logger(name: str = "hicpicnunc"):
     """Get a logger instance for a specific module."""
     return logger.bind(name=name)

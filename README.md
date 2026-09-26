@@ -1,10 +1,12 @@
-# Photo Meta Sync
+# Hic Pic Nunc
 
-Keep the dates and camera details of your photos and videos.
+**Where and when, kept in every pic.** Keep the dates and camera details of your photos and videos.
 
-Photo Meta Sync exports selected photos and videos from Google Photos while keeping their available capture metadata. Download one ZIP to preserve each file's date when you extract it.
+*The name plays on the Latin* hic et nunc, *"here and now": the where and when of every shot, with the pic in between.*
 
-![Photo Meta Sync home screen](docs/images/photo-meta-sync-home.png)
+Hic Pic Nunc exports selected photos and videos from Google Photos while keeping their available capture metadata. Download one ZIP to preserve each file's date when you extract it.
+
+![Hic Pic Nunc home screen](docs/images/hicpicnunc-home.png)
 
 ## What You Get
 
@@ -21,7 +23,7 @@ Photo Meta Sync exports selected photos and videos from Google Photos while keep
 2. Open **Settings** in the top-right to choose whether camera details and GPS are included. Capture date is always kept when available. JSON sidecars are optional and off by default.
 3. Choose **Export**, then **Download ZIP** on the results page and extract it.
 
-The ZIP is intentional: browsers assign today's date to individual downloads. Extracting the ZIP preserves the photo's capture date as its **file modification date**. Photo Meta Sync cannot recover a capture date that is missing from the source image.
+The ZIP is intentional: browsers assign today's date to individual downloads. Extracting the ZIP preserves the photo's capture date as its **file modification date**. Hic Pic Nunc cannot recover a capture date that is missing from the source image.
 
 ### Already Downloaded Photos?
 
@@ -29,7 +31,7 @@ Expand **Restore dates on downloaded photos** on the home screen and select the 
 
 ## Download A Release
 
-Download the right file from the [latest GitHub Release](https://github.com/NicoPietrusco/GPhotosMetaSync/releases/latest):
+Download the right file from the [latest GitHub Release](https://github.com/NicoPietrusco/HicPicNunc/releases/latest):
 
 | Your computer | Download |
 | --- | --- |
@@ -41,29 +43,29 @@ Download the right file from the [latest GitHub Release](https://github.com/Nico
 
 The macOS app is currently unsigned, so Gatekeeper may block it after download.
 
-1. Move `Photo Meta Sync.app` into `Applications`.
+1. Move `Hic Pic Nunc.app` into `Applications`.
 2. Control-click the app in Finder and choose **Open**.
 3. Confirm **Open** in the next dialog.
 
 If macOS still blocks an app you intentionally downloaded from this repository, run:
 
 ```bash
-xattr -dr com.apple.quarantine "/Applications/Photo Meta Sync.app"
+xattr -dr com.apple.quarantine "/Applications/Hic Pic Nunc.app"
 ```
 
 ### Windows Notice
 
-1. Right-click `PhotoMetaSync-Windows-x64.zip` and choose **Extract All…**. Don't open the app from inside the ZIP: Windows would copy only the `.exe`, without the files it needs next to it.
-2. Open the extracted folder and run `Photo Meta Sync.exe`.
+1. Right-click `HicPicNunc-Windows-x64.zip` and choose **Extract All…**. Don't open the app from inside the ZIP: Windows would copy only the `.exe`, without the files it needs next to it.
+2. Open the extracted folder and run `Hic Pic Nunc.exe`.
 3. The app is currently unsigned, so SmartScreen may show "Windows protected your PC". Choose **More info**, then **Run anyway**.
 
-If the app doesn't start, its log is in `%LOCALAPPDATA%\GPhotoMetaSync\logs\photo-meta-sync.log` (on macOS: `~/Library/Application Support/GPhotoMetaSync/logs/`).
+If the app doesn't start, its log is in `%LOCALAPPDATA%\GPhotoMetaSync\logs\hicpicnunc.log` (on macOS: `~/Library/Application Support/GPhotoMetaSync/logs/`).
 
 ## Google Photos And Privacy
 
-See the [privacy policy](https://nicopietrusco.github.io/GPhotosMetaSync/privacy.html) and the [project site](https://nicopietrusco.github.io/GPhotosMetaSync/).
+See the [privacy policy](https://nicopietrusco.github.io/HicPicNunc/privacy.html) and the [project site](https://nicopietrusco.github.io/HicPicNunc/).
 
-The app runs only on your computer at `localhost`. Your Google login, selected photos, and metadata preferences are stored or processed locally; there is no hosted Photo Meta Sync server.
+The app runs only on your computer at `localhost`. Your Google login, selected photos, and metadata preferences are stored or processed locally; there is no hosted Hic Pic Nunc server.
 
 Exported copies are kept only so you can download them: the app deletes them after 24 hours (set `JOB_RETENTION_HOURS` to change this). Working copies of the originals are removed as soon as each photo is processed.
 
@@ -78,8 +80,8 @@ JPEG, PNG, TIFF, BMP, WebP, HEIC, and HEIF are accepted. HEIC/HEIF support requi
 Requirements: Python 3.11+, [uv](https://docs.astral.sh/uv/), and optionally [just](https://github.com/casey/just).
 
 ```bash
-git clone https://github.com/NicoPietrusco/GPhotosMetaSync.git
-cd GPhotosMetaSync
+git clone https://github.com/NicoPietrusco/HicPicNunc.git
+cd HicPicNunc
 just setup
 just web
 ```
@@ -98,10 +100,10 @@ just package
 
 | Path | Contents |
 | --- | --- |
-| `src/gphotometasync/core/` | EXIF processing, metadata field selection (`metadata_fields.yaml`), export jobs |
-| `src/gphotometasync/google_photos/` | Google OAuth and Picker API client |
-| `src/gphotometasync/web/` | Flask app factory, blueprints in `routes/`, templates and static files |
-| `tests/` | Mirrors `src/gphotometasync/`: one `*_test.py` per module |
+| `src/hicpicnunc/core/` | EXIF processing, metadata field selection (`metadata_fields.yaml`), export jobs |
+| `src/hicpicnunc/google_photos/` | Google OAuth and Picker API client |
+| `src/hicpicnunc/web/` | Flask app factory, blueprints in `routes/`, templates and static files |
+| `tests/` | Mirrors `src/hicpicnunc/`: one `*_test.py` per module |
 | `packaging/` | PyInstaller spec for the desktop releases |
 
 The release workflow builds Apple Silicon macOS, Intel macOS, and Windows artifacts when a `v*` tag is pushed.

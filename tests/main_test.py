@@ -1,4 +1,4 @@
-"""Tests for gphotometasync.__main__."""
+"""Tests for hicpicnunc.__main__."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import urllib.request
 
 import pytest
 
-import gphotometasync.__main__ as entry
-from gphotometasync.web.routes import auth
+import hicpicnunc.__main__ as entry
+from hicpicnunc.web.routes import auth
 
 
 @pytest.fixture

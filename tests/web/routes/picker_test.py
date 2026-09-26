@@ -1,4 +1,4 @@
-"""Tests for gphotometasync.web.routes.picker."""
+"""Tests for hicpicnunc.web.routes.picker."""
 
 from __future__ import annotations
 
@@ -9,9 +9,9 @@ from typing import Any
 import piexif
 import pytest
 
-from gphotometasync.core.jobs import get_job_dir, list_job_files
-from gphotometasync.web import session as web_session
-from gphotometasync.web.routes import picker
+from hicpicnunc.core.jobs import get_job_dir, list_job_files
+from hicpicnunc.web import session as web_session
+from hicpicnunc.web.routes import picker
 
 GOOGLE_URL = "https://lh3.googleusercontent.com/item"
 

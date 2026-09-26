@@ -12,7 +12,7 @@ class Settings:
     """Application-wide settings and constants."""
 
     # Shown in the web UI
-    APP_NAME = "Photo Meta Sync"
+    APP_NAME = "Hic Pic Nunc"
 
     # Accepted image extensions (HEIC/HEIF need the optional pillow-heif)
     SUPPORTED_FORMATS = frozenset(
@@ -84,7 +84,7 @@ class Settings:
     @property
     def log_path(self) -> Path:
         """Log file for desktop builds, which have no terminal."""
-        return self.app_data_dir / "logs" / "photo-meta-sync.log"
+        return self.app_data_dir / "logs" / "hicpicnunc.log"
 
     @property
     def upload_dir(self) -> Path:
@@ -105,7 +105,10 @@ class Settings:
     @property
     def app_data_dir(self) -> Path:
         """Writable data directory; separate from a frozen app bundle."""
-        override = os.environ.get("GPHOTOMETASYNC_DATA_DIR")
+        # Folder names below predate the rename: kept so existing users keep their data.
+        override = os.environ.get("HICPICNUNC_DATA_DIR") or os.environ.get(
+            "GPHOTOMETASYNC_DATA_DIR"
+        )
         if override:
             return Path(override).expanduser()
         if not getattr(sys, "frozen", False):

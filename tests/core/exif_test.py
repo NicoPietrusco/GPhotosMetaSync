@@ -1,4 +1,4 @@
-"""Tests for gphotometasync.core.exif."""
+"""Tests for hicpicnunc.core.exif."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ import piexif
 import pytest
 from PIL import Image
 
-from gphotometasync.core.exif import convert_to_degrees, process_image_extract_and_embed
-from gphotometasync.core.metadata_fields import ExifFieldConfig, build_exif_field_config
+from hicpicnunc.core.exif import convert_to_degrees, process_image_extract_and_embed
+from hicpicnunc.core.metadata_fields import ExifFieldConfig, build_exif_field_config
 
 
 def _export(src: Path, config: ExifFieldConfig) -> dict:

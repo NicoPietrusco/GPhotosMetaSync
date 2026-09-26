@@ -1,4 +1,4 @@
-"""Tests for gphotometasync.log."""
+"""Tests for hicpicnunc.log."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from loguru import logger
 
-from gphotometasync.log import get_logger, setup_logger
+from hicpicnunc.log import get_logger, setup_logger
 
 
 @pytest.fixture(autouse=True)
@@ -19,7 +19,7 @@ def restore_loguru():
 
 
 def _log_file(data_dir: Path) -> Path:
-    return data_dir / "logs" / "photo-meta-sync.log"
+    return data_dir / "logs" / "hicpicnunc.log"
 
 
 def test_windowed_builds_without_stderr_log_to_a_file(data_dir, monkeypatch) -> None:

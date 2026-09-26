@@ -223,5 +223,5 @@ def download_zip(job_id: str):
         build_job_zip(base),
         mimetype="application/zip",
         as_attachment=True,
-        download_name=f"photo-meta-sync-{job_id[:8]}.zip",
+        download_name=f"hicpicnunc-{job_id[:8]}.zip",
     )

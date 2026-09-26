@@ -1,4 +1,4 @@
-/* Photo Meta Sync — project site. Colors follow the app (web/static/css/app.css). */
+/* Hic Pic Nunc — project site. Colors follow the app (web/static/css/app.css). */
 
 :root {
   --bg: #f5f6f1;
@@ -104,6 +104,15 @@ a:hover {
 
 main {
   padding-top: 2rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
 }
 
 h1 {

@@ -1,4 +1,4 @@
-"""Tests for gphotometasync.google_photos.oauth."""
+"""Tests for hicpicnunc.google_photos.oauth."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from gphotometasync.google_photos import oauth
+from hicpicnunc.google_photos import oauth
 
 
 def test_sign_in_requests_only_read_access_to_picked_items(
