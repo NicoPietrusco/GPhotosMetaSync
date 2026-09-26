@@ -1,4 +1,4 @@
-"""Tests for gphotometasync.google_photos.picker."""
+"""Tests for hicpicnunc.google_photos.picker."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from gphotometasync.google_photos import picker
+from hicpicnunc.google_photos import picker
 
 
 @pytest.mark.parametrize(

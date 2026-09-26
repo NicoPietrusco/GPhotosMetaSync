@@ -1,4 +1,4 @@
-"""Tests for gphotometasync.web.routes.jobs."""
+"""Tests for hicpicnunc.web.routes.jobs."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import zipfile
 import piexif
 import pytest
 
-from gphotometasync.web.routes.jobs import categorize_job_files, friendly_job_filename
+from hicpicnunc.web.routes.jobs import categorize_job_files, friendly_job_filename
 
 AJAX = {"Accept": "application/json", "X-Requested-With": "XMLHttpRequest"}
 
@@ -125,7 +125,7 @@ def test_zip_download_accepts_capture_dates_before_1980(client, make_jpeg) -> No
     download = client.get(f"/job/{job_id}/download-all")
 
     assert download.status_code == 200
-    assert download.headers["Content-Disposition"].endswith(f"photo-meta-sync-{job_id[:8]}.zip")
+    assert download.headers["Content-Disposition"].endswith(f"hicpicnunc-{job_id[:8]}.zip")
     assert zipfile.ZipFile(io.BytesIO(download.data)).namelist() == ["old_scan.jpg"]
 
 

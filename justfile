@@ -1,4 +1,4 @@
-# GPhotoMetaSync — https://github.com/casey/just
+# Hic Pic Nunc — https://github.com/casey/just
 # Install: brew install just  (or see https://github.com/casey/just)
 
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
@@ -22,7 +22,7 @@ verify:
 [group('Run')]
 web:
     @echo "Launching Flask app..."
-    uv run gphotometasync
+    uv run hicpicnunc
 
 [group('Setup')]
 install:
@@ -38,7 +38,7 @@ package:
 # Create a distributable macOS disk image after `just package`
 [group('Packaging')]
 package-macos: package
-    hdiutil create -volname "Photo Meta Sync" -srcfolder "dist/Photo Meta Sync.app" -ov -format UDZO "dist/PhotoMetaSync-macOS-{{mac_arch}}.dmg"
+    hdiutil create -volname "Hic Pic Nunc" -srcfolder "dist/Hic Pic Nunc.app" -ov -format UDZO "dist/HicPicNunc-macOS-{{mac_arch}}.dmg"
 
 [group('Setup')]
 setup:

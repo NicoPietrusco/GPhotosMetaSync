@@ -1,4 +1,4 @@
-"""Tests for gphotometasync.settings."""
+"""Tests for hicpicnunc.settings."""
 
 from __future__ import annotations
 
@@ -8,20 +8,20 @@ from pathlib import Path
 
 import pytest
 
-from gphotometasync.settings import settings
+from hicpicnunc.settings import settings
 
 
 @pytest.fixture
 def frozen(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Simulate a PyInstaller bundle with a temp home directory."""
     monkeypatch.setattr(sys, "frozen", True, raising=False)
-    monkeypatch.delenv("GPHOTOMETASYNC_DATA_DIR", raising=False)
+    monkeypatch.delenv("HICPICNUNC_DATA_DIR", raising=False)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     return tmp_path
 
 
 def test_data_dir_override(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("GPHOTOMETASYNC_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("HICPICNUNC_DATA_DIR", str(tmp_path))
 
     assert settings.data_dir == tmp_path / "data"
     assert settings.web_output_dir == tmp_path / "data" / "outputs"
@@ -29,7 +29,7 @@ def test_data_dir_override(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> N
 
 
 def test_source_checkout_writes_next_to_the_sources(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("GPHOTOMETASYNC_DATA_DIR", raising=False)
+    monkeypatch.delenv("HICPICNUNC_DATA_DIR", raising=False)
 
     assert settings.app_data_dir == settings.resource_dir
     assert (settings.resource_dir / "pyproject.toml").is_file()
@@ -54,7 +54,9 @@ def test_frozen_linux_uses_xdg_data_home(frozen: Path, monkeypatch: pytest.Monke
     monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setenv("XDG_DATA_HOME", str(frozen / "xdg"))
 
-    assert settings.app_data_dir == frozen / "xdg" / "gphotometasync"
+    assert (
+        settings.app_data_dir == frozen / "xdg" / "gphotometasync"
+    )  # pre-rename folder, kept for existing users
 
 
 def test_secret_key_from_environment_wins(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -67,7 +69,7 @@ def test_frozen_secret_key_is_generated_once_and_private(
     frozen: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("SECRET_KEY", raising=False)
-    monkeypatch.setenv("GPHOTOMETASYNC_DATA_DIR", str(frozen))
+    monkeypatch.setenv("HICPICNUNC_DATA_DIR", str(frozen))
 
     first = settings.secret_key
     key_file = frozen / "state" / "flask_secret_key"
@@ -82,3 +84,12 @@ def test_job_retention_defaults_to_one_day(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.delenv("JOB_RETENTION_HOURS", raising=False)
 
     assert settings.job_retention_hours == 24
+
+
+def test_pre_rename_data_dir_variable_still_works(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("HICPICNUNC_DATA_DIR", raising=False)
+    monkeypatch.setenv("GPHOTOMETASYNC_DATA_DIR", str(tmp_path))
+
+    assert settings.app_data_dir == tmp_path

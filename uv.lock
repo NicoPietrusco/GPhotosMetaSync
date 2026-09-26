@@ -312,7 +312,7 @@ wheels = [
 ]
 
 [[package]]
-name = "gphotometasync"
+name = "hicpicnunc"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [

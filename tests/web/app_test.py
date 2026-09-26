@@ -1,10 +1,10 @@
-"""Tests for gphotometasync.web.app."""
+"""Tests for hicpicnunc.web.app."""
 
 from __future__ import annotations
 
 import pytest
 
-from gphotometasync.web.app import is_local_host_header
+from hicpicnunc.web.app import is_local_host_header
 
 
 @pytest.mark.parametrize(
@@ -28,7 +28,7 @@ def test_create_app_prepares_writable_folders(app, data_dir) -> None:
 
 def test_templates_see_google_setup_state(client) -> None:
     # No client_secrets.json in the temp data dir's resource tree is required for the page.
-    assert b"Photo Meta Sync" in client.get("/").data
+    assert b"Hic Pic Nunc" in client.get("/").data
 
 
 def test_footer_links_the_privacy_policy_and_home_only_off_the_home_page(client, make_jpeg) -> None:

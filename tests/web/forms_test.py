@@ -1,10 +1,10 @@
-"""Tests for gphotometasync.web.forms."""
+"""Tests for hicpicnunc.web.forms."""
 
 from __future__ import annotations
 
 import pytest
 
-from gphotometasync.web.forms import parse_bool, parse_stem_suffix, sanitize_relative_path
+from hicpicnunc.web.forms import parse_bool, parse_stem_suffix, sanitize_relative_path
 
 
 @pytest.mark.parametrize(

@@ -37,7 +37,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
-          version="$(uv run python -c 'from importlib.metadata import version; print(version("gphotometasync"))')"
+          version="$(uv run python -c 'from importlib.metadata import version; print(version("hicpicnunc"))')"
           if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
             echo "::error::Tag ${GITHUB_REF_NAME} does not match package version ${version} in pyproject.toml"
             exit 1
@@ -62,11 +62,11 @@ jobs:
         run: uv run python scripts/smoke_test_bundle.py dist
       - name: Package macOS disk image
         if: runner.os == 'macOS'
-        run: hdiutil create -volname "Photo Meta Sync" -srcfolder "dist/Photo Meta Sync.app" -ov -format UDZO "dist/PhotoMetaSync-macOS-${{ matrix.arch }}.dmg"
+        run: hdiutil create -volname "Hic Pic Nunc" -srcfolder "dist/Hic Pic Nunc.app" -ov -format UDZO "dist/HicPicNunc-macOS-${{ matrix.arch }}.dmg"
       - name: Package Windows archive
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path 'dist\Photo Meta Sync\*' -DestinationPath 'dist\PhotoMetaSync-Windows-x64.zip'
+        run: Compress-Archive -Path 'dist\Hic Pic Nunc\*' -DestinationPath 'dist\HicPicNunc-Windows-x64.zip'
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}

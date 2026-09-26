@@ -1,4 +1,4 @@
-"""Tests for gphotometasync.core.jobs."""
+"""Tests for hicpicnunc.core.jobs."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from gphotometasync.core.jobs import (
+from hicpicnunc.core.jobs import (
     build_job_zip,
     get_job_dir,
     is_image_file,

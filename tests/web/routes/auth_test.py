@@ -1,11 +1,11 @@
-"""Tests for gphotometasync.web.routes.auth."""
+"""Tests for hicpicnunc.web.routes.auth."""
 
 from __future__ import annotations
 
 from google_auth_oauthlib.flow import WSGITimeoutError
 
-from gphotometasync.web import session as web_session
-from gphotometasync.web.routes import auth
+from hicpicnunc.web import session as web_session
+from hicpicnunc.web.routes import auth
 
 
 def test_check_auth_without_session_or_token(client) -> None:

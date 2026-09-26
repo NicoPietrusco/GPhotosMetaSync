@@ -33,9 +33,9 @@ STARTUP_TIMEOUT_S = 90
 
 def find_executable(dist: Path) -> Path:
     for candidate in (
-        dist / "Photo Meta Sync.app" / "Contents" / "MacOS" / "Photo Meta Sync",
-        dist / "Photo Meta Sync" / "Photo Meta Sync.exe",
-        dist / "Photo Meta Sync" / "Photo Meta Sync",
+        dist / "Hic Pic Nunc.app" / "Contents" / "MacOS" / "Hic Pic Nunc",
+        dist / "Hic Pic Nunc" / "Hic Pic Nunc.exe",
+        dist / "Hic Pic Nunc" / "Hic Pic Nunc",
     ):
         if candidate.is_file():
             return candidate
@@ -96,7 +96,7 @@ def check_zip(job_id: str) -> None:
 def main() -> None:
     executable = find_executable(Path(sys.argv[1] if len(sys.argv) > 1 else "dist"))
     data_dir = Path(tempfile.mkdtemp(prefix="pms-smoke-"))
-    env = {**os.environ, "PORT": str(PORT), "GPHOTOMETASYNC_DATA_DIR": str(data_dir)}
+    env = {**os.environ, "PORT": str(PORT), "HICPICNUNC_DATA_DIR": str(data_dir)}
     if os.name != "nt":
         env["BROWSER"] = "true"  # don't open a browser on CI
     print(f"Starting {executable}")
@@ -108,9 +108,11 @@ def main() -> None:
         check_zip(upload_photo())
         print("Smoke test passed: UI served, photo exported with its capture date.")
     except Exception as e:
-        log = data_dir / "logs" / "photo-meta-sync.log"
+        log = data_dir / "logs" / "hicpicnunc.log"
         print(f"Smoke test FAILED: {e}", file=sys.stderr)
-        print(log.read_text(encoding="utf-8") if log.is_file() else "(no log file)", file=sys.stderr)
+        print(
+            log.read_text(encoding="utf-8") if log.is_file() else "(no log file)", file=sys.stderr
+        )
         raise SystemExit(1) from e
     finally:
         proc.terminate()
