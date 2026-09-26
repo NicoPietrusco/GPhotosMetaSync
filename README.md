@@ -88,6 +88,10 @@ just web
 
 For Google Photos when running from source, follow the maintainer setup in [docs/google-oauth-setup.md](docs/google-oauth-setup.md).
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, project conventions, testing, and contribution guidelines.
+
 ## Development
 
 ```bash
