@@ -30,6 +30,77 @@ def test_sign_in_requests_only_read_access_to_picked_items(
 
     assert oauth.GooglePhotosOAuth(secrets).run_local_server() == "credentials"
     assert seen["path"] == str(secrets)
-    assert seen["scopes"] == ["https://www.googleapis.com/auth/photospicker.mediaitems.readonly"]
+    assert seen["scopes"] == oauth.SCOPES
+    assert "openid" in seen["scopes"]
+    assert "https://www.googleapis.com/auth/userinfo.email" in seen["scopes"]
+    assert "https://www.googleapis.com/auth/photospicker.mediaitems.readonly" in seen["scopes"]
+    assert seen["prompt"] == "select_account consent"
     assert seen["port"] == 0  # any free port, so it never collides with the app
     assert seen["timeout_seconds"] == oauth.SIGN_IN_TIMEOUT_SECONDS  # never waits forever
+
+
+def test_revoke_token_success(monkeypatch: pytest.MonkeyPatch, fake_response) -> None:
+    posted: dict[str, Any] = {}
+
+    def fake_post(url: str, **kwargs: Any):
+        posted.update(url=url, **kwargs)
+        return fake_response(status_code=200)
+
+    monkeypatch.setattr(oauth.requests, "post", fake_post)
+    assert oauth.revoke_token("tok-123") is True
+    assert posted["url"] == oauth.REVOKE_URL
+    assert posted["data"] == {"token": "tok-123"}
+
+
+def test_revoke_token_network_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_post(url: str, **kwargs: Any):
+        import requests
+
+        raise requests.ConnectionError("Offline")
+
+    monkeypatch.setattr(oauth.requests, "post", fake_post)
+    assert oauth.revoke_token("tok-123") is False
+
+
+def test_revoke_credentials_prefers_refresh_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    revoked: list[str] = []
+    monkeypatch.setattr(oauth, "revoke_token", lambda tok: revoked.append(tok) or True)
+
+    class DummyCreds:
+        token = "access-tok"
+        refresh_token = "refresh-tok"
+
+    assert oauth.revoke_credentials(DummyCreds()) is True
+    assert revoked == ["refresh-tok"]
+
+
+def test_extract_verified_email_from_account(credentials) -> None:
+    credentials._account = "saved@gmail.com"
+    assert oauth.extract_verified_email(credentials) == "saved@gmail.com"
+
+
+def test_extract_verified_email_from_id_token(credentials, monkeypatch: pytest.MonkeyPatch) -> None:
+    credentials._id_token = "fake-jwt"
+    monkeypatch.setattr(
+        oauth.id_token,
+        "verify_oauth2_token",
+        lambda token, request, aud: {"email": "verified@gmail.com"},
+    )
+    assert oauth.extract_verified_email(credentials) == "verified@gmail.com"
+
+
+def test_extract_verified_email_fallback_userinfo(
+    credentials, monkeypatch: pytest.MonkeyPatch, fake_response
+) -> None:
+    credentials._id_token = "broken-jwt"
+
+    def fail_verify(*args, **kwargs):
+        raise ValueError("Invalid signature")
+
+    monkeypatch.setattr(oauth.id_token, "verify_oauth2_token", fail_verify)
+
+    def fake_get(url: str, **kwargs):
+        return fake_response(json_body={"email": "userinfo@gmail.com"}, status_code=200)
+
+    monkeypatch.setattr(oauth.requests, "get", fake_get)
+    assert oauth.extract_verified_email(credentials) == "userinfo@gmail.com"
