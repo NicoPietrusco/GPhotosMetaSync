@@ -51,6 +51,14 @@ If macOS still blocks an app you intentionally downloaded from this repository, 
 xattr -dr com.apple.quarantine "/Applications/Photo Meta Sync.app"
 ```
 
+### Windows Notice
+
+1. Right-click `PhotoMetaSync-Windows-x64.zip` and choose **Extract All…**. Don't open the app from inside the ZIP: Windows would copy only the `.exe`, without the files it needs next to it.
+2. Open the extracted folder and run `Photo Meta Sync.exe`.
+3. The app is currently unsigned, so SmartScreen may show "Windows protected your PC". Choose **More info**, then **Run anyway**.
+
+If the app doesn't start, its log is in `%LOCALAPPDATA%\GPhotoMetaSync\logs\photo-meta-sync.log` (on macOS: `~/Library/Application Support/GPhotoMetaSync/logs/`).
+
 ## Google Photos And Privacy
 
 The app runs only on your computer at `localhost`. Your Google login, selected photos, and metadata preferences are stored or processed locally; there is no hosted Photo Meta Sync server.
