@@ -522,15 +522,76 @@ async function loadSelectedPhotos() {
     }
 }
 
+async function signOut() {
+    const signoutBtn = document.getElementById('signout-btn');
+    if (signoutBtn) signoutBtn.disabled = true;
+    showStatus('Signing out…', 'info');
+
+    try {
+        await fetch('/auth/logout', { method: 'POST' });
+    } catch (e) {
+        console.warn('Logout network error:', e);
+    }
+
+    authenticated = false;
+    setLoadedPickerItems([]);
+
+    const container = document.getElementById('photos-content');
+    if (container) container.innerHTML = '';
+    const photosContainer = document.getElementById('photos-container');
+    if (photosContainer) photosContainer.classList.remove('show');
+    const photoCount = document.getElementById('photo-count');
+    if (photoCount) photoCount.textContent = 'Nothing selected';
+
+    const authBtn = document.getElementById('auth-btn');
+    if (authBtn) {
+        authBtn.innerHTML = '<span class="button-step">1</span><svg class="google-icon" viewBox="0 -1 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.35 12.27c0-.79-.07-1.55-.21-2.27H12v4.3h5.22a4.46 4.46 0 0 1-1.94 2.93v2.79h3.59c2.1-1.94 3.32-4.8 3.32-7.75Z"/><path fill="#34A853" d="M12 21.73c2.65 0 4.87-.88 6.49-2.39l-3.59-2.79c-1 .67-2.27 1.07-3.9 1.07-3 0-5.54-2.03-6.45-4.76H.84v2.88A9.8 9.8 0 0 0 12 21.73Z"/><path fill="#FBBC05" d="M5.55 12.86A5.9 5.9 0 0 1 5.19 10.8c0-.71.13-1.4.36-2.06V5.86H.84A9.8 9.8 0 0 0 0 10.8c0 1.58.38 3.07 1.04 4.34l4.51-3.28Z"/><path fill="#EA4335" d="M12 3.93c1.76 0 3.34.61 4.58 1.81l3.43-3.43C16.86.36 14.64-.27 12-.27A9.8 9.8 0 0 0 .84 5.86l4.71 2.88c.91-2.73 3.45-4.81 6.45-4.81Z"/></svg> Sign in with Google';
+        authBtn.className = 'btn btn-secondary has-tooltip';
+        authBtn.disabled = false;
+    }
+    if (signoutBtn) {
+        signoutBtn.style.display = 'none';
+        signoutBtn.disabled = false;
+    }
+    const signedInUser = document.getElementById('signed-in-user');
+    if (signedInUser) {
+        signedInUser.textContent = '';
+        signedInUser.style.display = 'none';
+    }
+    const pickerBtn = document.getElementById('picker-btn');
+    if (pickerBtn) pickerBtn.disabled = true;
+
+    showStatus('Signed out. You can sign in with a different account.', 'success');
+}
+
 window.addEventListener('load', async () => {
     try {
         const response = await fetch('/api/check-auth');
         if (response.ok) {
+            const data = await response.json().catch(() => ({}));
             authenticated = true;
             const authBtn = document.getElementById('auth-btn');
             authBtn.textContent = 'Signed in';
             authBtn.className = 'btn btn-muted';
             authBtn.disabled = true;
+
+            const signoutBtn = document.getElementById('signout-btn');
+            if (signoutBtn) {
+                signoutBtn.style.display = 'inline-flex';
+                signoutBtn.disabled = false;
+            }
+
+            const signedInUser = document.getElementById('signed-in-user');
+            if (signedInUser) {
+                if (data.email) {
+                    signedInUser.textContent = `Signed in as ${data.email}`;
+                    signedInUser.style.display = 'block';
+                } else {
+                    signedInUser.textContent = '';
+                    signedInUser.style.display = 'none';
+                }
+            }
+
             document.getElementById('picker-btn').disabled = false;
         } else {
             const data = await response.json().catch(() => ({}));
