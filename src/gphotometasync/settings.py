@@ -82,6 +82,11 @@ class Settings:
         return self.app_data_dir / "settings" / "metadata_preferences.json"
 
     @property
+    def log_path(self) -> Path:
+        """Log file for desktop builds, which have no terminal."""
+        return self.app_data_dir / "logs" / "photo-meta-sync.log"
+
+    @property
     def upload_dir(self) -> Path:
         return self.data_dir / "uploads"
 

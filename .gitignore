@@ -23,6 +23,7 @@ dist/
 /settings/
 /state/
 /output/
+/logs/
 
 # Editors and OS
 .vscode/

@@ -57,6 +57,9 @@ jobs:
           printf '%s' "$GOOGLE_OAUTH_CLIENT_JSON" > credentials/client_secrets.json
       - name: Build application
         run: uv run pyinstaller --noconfirm --clean packaging/pyinstaller.spec
+      - name: Smoke-test the bundle
+        # Launches the real windowed app: catches crashes that only happen once frozen.
+        run: uv run python scripts/smoke_test_bundle.py dist
       - name: Package macOS disk image
         if: runner.os == 'macOS'
         run: hdiutil create -volname "Photo Meta Sync" -srcfolder "dist/Photo Meta Sync.app" -ov -format UDZO "dist/PhotoMetaSync-macOS-${{ matrix.arch }}.dmg"
