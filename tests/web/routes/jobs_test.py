@@ -125,7 +125,7 @@ def test_zip_download_accepts_capture_dates_before_1980(client, make_jpeg) -> No
     download = client.get(f"/job/{job_id}/download-all")
 
     assert download.status_code == 200
-    assert download.headers["Content-Disposition"].endswith(f"hicpicnunc-{job_id[:8]}.zip")
+    assert f'filename="hicpicnunc-{job_id[:8]}.zip"' in download.headers["Content-Disposition"]
     assert zipfile.ZipFile(io.BytesIO(download.data)).namelist() == ["old_scan.jpg"]
 
 

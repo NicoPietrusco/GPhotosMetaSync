@@ -7,12 +7,12 @@ from pathlib import Path
 
 from flask import (
     Blueprint,
+    Response,
     flash,
     jsonify,
     redirect,
     render_template,
     request,
-    send_file,
     send_from_directory,
     session,
     url_for,
@@ -21,9 +21,9 @@ from werkzeug.utils import secure_filename
 
 from ...core.exif import process_image_extract_and_embed
 from ...core.jobs import (
-    build_job_zip,
     get_job_dir,
     is_image_file,
+    iter_job_zip,
     list_job_files,
     new_job,
     resolve_job_file,
@@ -194,9 +194,6 @@ def result(job_id: str):
         video_files=_items(groups["videos"]),
         json_files=_items(groups["jsons"]),
         other_files=_items(groups["others"]),
-        download_manifest=[
-            {"path": n, "url": url_for("jobs.serve_file", job_id=job_id, filename=n)} for n in names
-        ],
     )
 
 
@@ -219,9 +216,9 @@ def download_zip(job_id: str):
         return "Not found", 404
     if not list_job_files(base):
         return "No files", 404
-    return send_file(
-        build_job_zip(base),
+    # Streamed so the download starts at once, however large the job is.
+    return Response(
+        (chunk for chunk in iter_job_zip(base) if chunk),
         mimetype="application/zip",
-        as_attachment=True,
-        download_name=f"hicpicnunc-{job_id[:8]}.zip",
+        headers={"Content-Disposition": f'attachment; filename="hicpicnunc-{job_id[:8]}.zip"'},
     )
