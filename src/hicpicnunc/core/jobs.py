@@ -143,12 +143,45 @@ def resolve_job_file(job_dir: Path, rel: str) -> Path | None:
     return candidate
 
 
-def build_job_zip(job_dir: Path) -> io.BytesIO:
-    """ZIP every job file; entries keep each file's mtime (the capture date)."""
-    buf = io.BytesIO()
+class _ChunkSink(io.RawIOBase):
+    """Write-only, unseekable buffer that zipfile streams into; drained after each write."""
+
+    def __init__(self) -> None:
+        self._chunks: list[bytes] = []
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, data) -> int:  # type: ignore[override]
+        self._chunks.append(bytes(data))
+        return len(data)
+
+    def drain(self) -> bytes:
+        data = b"".join(self._chunks)
+        self._chunks.clear()
+        return data
+
+
+ZIP_CHUNK_SIZE = 1 << 20
+
+
+def iter_job_zip(job_dir: Path) -> Iterator[bytes]:
+    """
+    Stream a ZIP of every job file, a chunk at a time, keeping each file's mtime.
+
+    Entries are stored, not deflated: photos and videos are already compressed, and
+    deflating gigabytes of video made users wait minutes before the download started.
+    Memory stays around ZIP_CHUNK_SIZE whatever the job size.
+    """
+    sink = _ChunkSink()
     # Capture dates before 1980 are clamped instead of failing the whole download.
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED, strict_timestamps=False) as zf:
+    with zipfile.ZipFile(sink, "w", zipfile.ZIP_STORED, strict_timestamps=False) as zf:
         for rel in list_job_files(job_dir):
-            zf.write(job_dir / rel, arcname=rel)
-    buf.seek(0)
-    return buf
+            path = job_dir / rel
+            info = zipfile.ZipInfo.from_file(path, arcname=rel, strict_timestamps=False)
+            with path.open("rb") as src, zf.open(info, "w") as dest:
+                while block := src.read(ZIP_CHUNK_SIZE):
+                    dest.write(block)
+                    yield sink.drain()
+            yield sink.drain()
+    yield sink.drain()  # central directory
