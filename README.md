@@ -112,6 +112,10 @@ just package
 
 The release workflow builds Apple Silicon macOS, Intel macOS, and Windows artifacts when a `v*` tag is pushed.
 
+## Support The Project
+
+If Hic Pic Nunc saved your photo dates, a ⭐ on GitHub helps others find it. Bug reports and pull requests are welcome too: see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 [MIT](LICENSE)
