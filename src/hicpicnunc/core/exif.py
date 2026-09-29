@@ -7,8 +7,9 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -430,26 +431,63 @@ def embed_exif_subset(
         return False
 
 
-def apply_exif_timestamp(output_path: Path, nested_exif: dict[str, dict[str, Any]]) -> bool:
-    """Set an output file's modification time from its best available EXIF capture date."""
-    candidates = (
-        ("Exif", "DateTimeOriginal"),
-        ("Exif", "DateTimeDigitized"),
-        ("0th", "DateTime"),
-    )
-    for ifd_key, tag_name in candidates:
+_OFFSET_RE = re.compile(r"^([+-])(\d{2}):(\d{2})$")
+
+# Each capture-date tag and the tag holding its UTC offset (EXIF 2.31).
+_DATE_TAGS = (
+    (("Exif", "DateTimeOriginal"), ("Exif", "OffsetTimeOriginal")),
+    (("Exif", "DateTimeDigitized"), ("Exif", "OffsetTimeDigitized")),
+    (("0th", "DateTime"), ("Exif", "OffsetTime")),
+)
+
+
+def _exif_text(value: Any) -> str:
+    text = value.decode("ascii", errors="ignore") if isinstance(value, bytes) else str(value)
+    return text.strip().rstrip("\x00").strip()
+
+
+def _utc_offset(value: Any) -> timezone | None:
+    """Parse an EXIF offset such as "+02:00"; None when missing or malformed."""
+    match = _OFFSET_RE.match(_exif_text(value)) if value else None
+    if not match:
+        return None
+    sign, hours, minutes = match.groups()
+    delta = timedelta(hours=int(hours), minutes=int(minutes))
+    return timezone(-delta if sign == "-" else delta)
+
+
+def exif_capture_timestamp(nested_exif: dict[str, dict[str, Any]]) -> float | None:
+    """
+    POSIX timestamp of the best available capture date, or None.
+
+    EXIF dates are local wall-clock times. With their offset tag they map to an exact
+    instant; without one they are read in the exporting computer's time zone, which is
+    right for photos taken where they are exported.
+    """
+    for (ifd_key, tag_name), (offset_ifd, offset_tag) in _DATE_TAGS:
         raw = nested_exif.get(ifd_key, {}).get(tag_name)
         if not raw:
             continue
-        date_str = raw.decode("ascii", errors="ignore") if isinstance(raw, bytes) else str(raw)
         try:
-            timestamp = datetime.strptime(date_str, EXIF_DATE_FORMAT).timestamp()
-            os.utime(output_path, (timestamp, timestamp))
-            return True
-        except (OSError, ValueError) as e:
-            logger.warning("Could not set filesystem date for {}: {}", output_path.name, e)
-            return False
-    return False
+            taken = datetime.strptime(_exif_text(raw), EXIF_DATE_FORMAT)
+        except ValueError:
+            continue  # e.g. "0000:00:00 00:00:00": try the next date tag
+        offset = _utc_offset(nested_exif.get(offset_ifd, {}).get(offset_tag))
+        return (taken.replace(tzinfo=offset) if offset else taken).timestamp()
+    return None
+
+
+def apply_exif_timestamp(output_path: Path, nested_exif: dict[str, dict[str, Any]]) -> bool:
+    """Set an output file's modification time from its best available EXIF capture date."""
+    timestamp = exif_capture_timestamp(nested_exif)
+    if timestamp is None:
+        return False
+    try:
+        os.utime(output_path, (timestamp, timestamp))
+    except OSError as e:
+        logger.warning("Could not set filesystem date for {}: {}", output_path.name, e)
+        return False
+    return True
 
 
 def process_image_extract_and_embed(
