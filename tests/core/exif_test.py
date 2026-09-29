@@ -9,7 +9,7 @@ from pathlib import Path
 
 import piexif
 import pytest
-from PIL import Image
+from PIL import Image, ImageCms
 
 from hicpicnunc.core.exif import convert_to_degrees, process_image_extract_and_embed
 from hicpicnunc.core.metadata_fields import ExifFieldConfig, build_exif_field_config
@@ -116,3 +116,37 @@ def test_convert_to_degrees_handles_rationals_and_bad_input() -> None:
     assert convert_to_degrees((10, 30, 36)) == pytest.approx(10.51)
     assert convert_to_degrees(None) is None
     assert convert_to_degrees("garbage") is None
+
+
+@pytest.fixture(scope="module")
+def srgb_profile() -> bytes:
+    return ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+
+
+@pytest.mark.parametrize("ext", ["png", "webp", "tiff"])
+@pytest.mark.parametrize("with_exif", [False, True], ids=["no-exif", "exif"])
+def test_reencoded_copies_keep_their_color_profile(
+    tmp_path: Path, srgb_profile: bytes, ext: str, with_exif: bool
+) -> None:
+    src = tmp_path / f"wide-gamut.{ext}"
+    save_kw: dict = {"icc_profile": srgb_profile}
+    if with_exif:
+        save_kw["exif"] = piexif.dump(
+            {"Exif": {piexif.ExifIFD.DateTimeOriginal: b"2021:07:08 09:10:11"}}
+        )
+    Image.new("RGB", (16, 16), "red").save(src, **save_kw)
+
+    out = Path(_export(src, build_exif_field_config({}))["output_image"])
+
+    with Image.open(out) as img:
+        assert img.info.get("icc_profile") == srgb_profile
+
+
+def test_images_without_a_color_profile_stay_without_one(tmp_path: Path) -> None:
+    src = tmp_path / "plain.webp"
+    Image.new("RGB", (16, 16), "red").save(src)
+
+    out = Path(_export(src, build_exif_field_config({}))["output_image"])
+
+    with Image.open(out) as img:
+        assert not img.info.get("icc_profile")
