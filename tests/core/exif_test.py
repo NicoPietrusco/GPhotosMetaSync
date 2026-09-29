@@ -4,14 +4,18 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import piexif
 import pytest
 from PIL import Image, ImageCms
 
-from hicpicnunc.core.exif import convert_to_degrees, process_image_extract_and_embed
+from hicpicnunc.core.exif import (
+    convert_to_degrees,
+    exif_capture_timestamp,
+    process_image_extract_and_embed,
+)
 from hicpicnunc.core.metadata_fields import ExifFieldConfig, build_exif_field_config
 
 
@@ -150,3 +154,90 @@ def test_images_without_a_color_profile_stay_without_one(tmp_path: Path) -> None
 
     with Image.open(out) as img:
         assert not img.info.get("icc_profile")
+
+
+def _utc(*args: int) -> float:
+    return datetime(*args, tzinfo=UTC).timestamp()
+
+
+@pytest.mark.parametrize(
+    ("exif", "expected"),
+    [
+        # Taken at 16:03 in New York: the same instant wherever it's exported.
+        (
+            {"Exif": {"DateTimeOriginal": b"2022:08:05 16:03:22", "OffsetTimeOriginal": b"-04:00"}},
+            _utc(2022, 8, 5, 20, 3, 22),
+        ),
+        (
+            {"Exif": {"DateTimeOriginal": b"2022:08:05 16:03:22", "OffsetTimeOriginal": b"+05:30"}},
+            _utc(2022, 8, 5, 10, 33, 22),
+        ),
+        # Each date tag uses its own offset tag.
+        (
+            {
+                "Exif": {
+                    "DateTimeDigitized": b"2022:08:05 16:03:22",
+                    "OffsetTimeDigitized": b"+02:00",
+                }
+            },
+            _utc(2022, 8, 5, 14, 3, 22),
+        ),
+        (
+            {"0th": {"DateTime": b"2022:08:05 16:03:22"}, "Exif": {"OffsetTime": b"+00:00"}},
+            _utc(2022, 8, 5, 16, 3, 22),
+        ),
+        # An unreadable original date falls through to the next date tag.
+        (
+            {
+                "Exif": {
+                    "DateTimeOriginal": b"0000:00:00 00:00:00",
+                    "DateTimeDigitized": b"2022:08:05 16:03:22",
+                    "OffsetTimeDigitized": b"-04:00",
+                }
+            },
+            _utc(2022, 8, 5, 20, 3, 22),
+        ),
+        # Padding some cameras leave in EXIF strings is ignored.
+        (
+            {
+                "Exif": {
+                    "DateTimeOriginal": b"2022:08:05 16:03:22\x00",
+                    "OffsetTimeOriginal": b"-04:00\x00",
+                }
+            },
+            _utc(2022, 8, 5, 20, 3, 22),
+        ),
+    ],
+)
+def test_capture_timestamp_uses_the_photo_time_zone(exif: dict, expected: float) -> None:
+    assert exif_capture_timestamp(exif) == expected
+
+
+@pytest.mark.parametrize("offset", [None, b"", b"garbage", b"+2:00"])
+def test_capture_timestamp_without_a_usable_offset_uses_local_time(offset) -> None:
+    exif = {"Exif": {"DateTimeOriginal": b"2022:08:05 16:03:22"}}
+    if offset is not None:
+        exif["Exif"]["OffsetTimeOriginal"] = offset
+
+    assert exif_capture_timestamp(exif) == datetime(2022, 8, 5, 16, 3, 22).timestamp()
+
+
+def test_capture_timestamp_is_none_without_a_readable_date() -> None:
+    assert exif_capture_timestamp({}) is None
+    assert exif_capture_timestamp({"Exif": {"DateTimeOriginal": b"0000:00:00 00:00:00"}}) is None
+
+
+def test_exported_file_date_follows_the_photo_time_zone(make_jpeg) -> None:
+    src = make_jpeg(
+        "nyc.jpg",
+        {
+            "Exif": {
+                piexif.ExifIFD.DateTimeOriginal: b"2022:08:05 16:03:22",
+                piexif.ExifIFD.OffsetTimeOriginal: b"-04:00",
+            }
+        },
+    )
+
+    result = _export(src, build_exif_field_config({}))
+
+    assert os.path.getmtime(result["output_image"]) == _utc(2022, 8, 5, 20, 3, 22)
