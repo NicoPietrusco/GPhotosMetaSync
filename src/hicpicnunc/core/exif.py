@@ -367,6 +367,9 @@ def _save_with_pillow(image_path: Path, output_path: Path, exif_bytes: bytes | N
         save_kw: dict[str, Any] = {}
         if exif_bytes is not None:
             save_kw["exif"] = exif_bytes
+        # Pillow only carries the color profile over for some formats (not WebP).
+        if icc_profile := img.info.get("icc_profile"):
+            save_kw["icc_profile"] = icc_profile
         if image_path.suffix.lower() == ".webp":
             save_kw["quality"] = 95
         img.save(output_path, format=img.format or "JPEG", **save_kw)
