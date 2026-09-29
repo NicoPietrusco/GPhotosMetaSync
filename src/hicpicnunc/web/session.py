@@ -38,12 +38,7 @@ def current_session() -> PickerSessionData | None:
 def start_session(creds: Credentials, response: Response, email: str | None = None) -> None:
     """Remember creds for this browser and set its session cookie on response."""
     sid = secrets.token_urlsafe(16)
-    user_email = (
-        email
-        or getattr(creds, "account", None)
-        or getattr(creds, "_account", None)
-        or None
-    )
+    user_email = email or getattr(creds, "account", None) or None
     picker_sessions[sid] = PickerSessionData(
         credentials_json=creds.to_json(),
         email=user_email,
