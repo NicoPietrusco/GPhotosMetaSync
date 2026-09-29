@@ -150,6 +150,18 @@ def test_logout_without_prior_session_or_token(client) -> None:
     assert resp.get_json() == {"ok": True}
 
 
+def test_logout_rejects_foreign_origin(client, data_dir, credentials) -> None:
+    token = data_dir / "credentials" / "google_token.json"
+    token.parent.mkdir(parents=True, exist_ok=True)
+    token.write_text(credentials.to_json())
+
+    resp = client.post("/auth/logout", headers={"Origin": "https://evil.example"})
+
+    assert resp.status_code == 403
+    assert resp.get_json() == {"ok": False, "error": "forbidden"}
+    assert token.is_file()
+
+
 def test_sign_in_stores_the_token_and_email(
     client, credentials, monkeypatch, tmp_path, data_dir
 ) -> None:

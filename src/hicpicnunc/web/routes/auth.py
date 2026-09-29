@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 from flask import Blueprint, flash, jsonify, redirect, request, url_for
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import WSGITimeoutError
@@ -37,7 +39,7 @@ def sign_in():
 
     email = extract_verified_email(creds)
     if email:
-        creds._account = email
+        creds = creds.with_account(email)
     save_token(creds)
     resp = redirect(url_for("home.index"))
     start_session(creds, resp, email=email)
@@ -53,7 +55,7 @@ def check_auth():
         if not email and session_data.credentials_json:
             try:
                 creds = credentials_from_session_json(session_data.credentials_json)
-                email = getattr(creds, "account", None) or getattr(creds, "_account", None) or None
+                email = getattr(creds, "account", None) or None
                 session_data.email = email
             except Exception:
                 pass
@@ -65,11 +67,11 @@ def check_auth():
     try:
         creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
         ensure_fresh(creds)
-        email = getattr(creds, "account", None) or getattr(creds, "_account", None) or None
+        email = getattr(creds, "account", None) or None
         if not email:
             email = extract_verified_email(creds)
             if email:
-                creds._account = email
+                creds = creds.with_account(email)
         save_token(creds)
     except Exception as e:
         logger.warning("check-auth token restore: {}", e)
@@ -82,6 +84,13 @@ def check_auth():
 
 @bp.post("/auth/logout")
 def logout():
+    origin = request.headers.get("Origin")
+    if origin and urlsplit(origin).netloc != request.host:
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+
+    if request.headers.get("Sec-Fetch-Site") == "cross-site":
+        return jsonify({"ok": False, "error": "forbidden"}), 403
+
     # Attempt to find token to revoke from in-memory session or token file
     token_to_revoke = None
     data = current_session()

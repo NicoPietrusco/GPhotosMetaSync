@@ -75,7 +75,7 @@ def test_revoke_credentials_prefers_refresh_token(monkeypatch: pytest.MonkeyPatc
 
 
 def test_extract_verified_email_from_account(credentials) -> None:
-    credentials._account = "saved@gmail.com"
+    credentials = credentials.with_account("saved@gmail.com")
     assert oauth.extract_verified_email(credentials) == "saved@gmail.com"
 
 
