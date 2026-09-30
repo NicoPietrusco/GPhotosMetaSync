@@ -8,7 +8,14 @@ from flask import Blueprint, flash, jsonify, redirect, request, url_for
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import WSGITimeoutError
 
-from ...google_photos.oauth import SCOPES, GooglePhotosOAuth, extract_verified_email, revoke_token
+from ...google_photos.oauth import (
+    SCOPES,
+    GooglePhotosOAuth,
+    extract_verified_email,
+    has_photos_scope,
+    revoke_credentials,
+    revoke_token,
+)
 from ...google_photos.picker import credentials_from_session_json, ensure_fresh
 from ...log import get_logger
 from ...settings import settings
@@ -35,6 +42,17 @@ def sign_in():
     except Exception as e:
         logger.exception("OAuth failed")
         flash(f"Sign-in didn’t finish: {e}", "error")
+        return redirect(url_for("home.index"))
+
+    if not has_photos_scope(creds):
+        try:
+            revoke_credentials(creds)
+        except Exception as e:
+            logger.warning("Could not revoke partial credentials: {}", e)
+        flash(
+            "Hic Pic Nunc needs access to Google Photos. Sign in again and tick the Google Photos permission.",
+            "error",
+        )
         return redirect(url_for("home.index"))
 
     email = extract_verified_email(creds)

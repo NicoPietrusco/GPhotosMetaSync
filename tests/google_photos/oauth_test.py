@@ -104,3 +104,50 @@ def test_extract_verified_email_fallback_userinfo(
 
     monkeypatch.setattr(oauth.requests, "get", fake_get)
     assert oauth.extract_verified_email(credentials) == "userinfo@gmail.com"
+
+
+def test_photos_scope_in_scopes() -> None:
+    assert oauth.PHOTOS_SCOPE == "https://www.googleapis.com/auth/photospicker.mediaitems.readonly"
+    assert oauth.PHOTOS_SCOPE in oauth.SCOPES
+
+
+def test_has_photos_scope(credentials) -> None:
+    # Full scopes granted
+    credentials._granted_scopes = list(oauth.SCOPES)
+    assert oauth.has_photos_scope(credentials) is True
+
+    # Partial grant (missing Photos scope)
+    credentials._granted_scopes = ["openid", "https://www.googleapis.com/auth/userinfo.email"]
+    assert oauth.has_photos_scope(credentials) is False
+
+    # None or empty granted_scopes
+    credentials._granted_scopes = None
+    assert oauth.has_photos_scope(credentials) is False
+
+    credentials._granted_scopes = []
+    assert oauth.has_photos_scope(credentials) is False
+
+    # Space-separated string (as sometimes parsed in raw token payloads)
+    credentials._granted_scopes = f"openid {oauth.PHOTOS_SCOPE}"
+    assert oauth.has_photos_scope(credentials) is True
+
+    credentials._granted_scopes = "openid https://www.googleapis.com/auth/userinfo.email"
+    assert oauth.has_photos_scope(credentials) is False
+
+
+def test_oauthlib_relax_token_scope_behavior(monkeypatch: pytest.MonkeyPatch) -> None:
+    from oauthlib.oauth2.rfc6749.parameters import validate_token_parameters
+    from oauthlib.oauth2.rfc6749.tokens import OAuth2Token
+
+    token = OAuth2Token(
+        {"access_token": "token", "token_type": "Bearer", "scope": "openid"},
+        old_scope="openid photos",
+    )
+
+    # With OAUTHLIB_RELAX_TOKEN_SCOPE active, scope reduction does not raise
+    validate_token_parameters(token)
+
+    # Without OAUTHLIB_RELAX_TOKEN_SCOPE, oauthlib raises Scope has changed
+    monkeypatch.delenv("OAUTHLIB_RELAX_TOKEN_SCOPE", raising=False)
+    with pytest.raises(Exception, match="Scope has changed"):
+        validate_token_parameters(token)
