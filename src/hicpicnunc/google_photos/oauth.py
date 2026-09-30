@@ -6,6 +6,7 @@ End users only sign in with Google; whoever packages the app adds client_secrets
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -20,12 +21,17 @@ from ..settings import settings
 if TYPE_CHECKING:
     from google.oauth2.credentials import Credentials
 
+# Ensure oauthlib tolerates granular consent where some requested scopes are not granted.
+os.environ.setdefault("OAUTHLIB_RELAX_TOKEN_SCOPE", "1")
+
 logger = get_logger(__name__)
+
+PHOTOS_SCOPE = "https://www.googleapis.com/auth/photospicker.mediaitems.readonly"
 
 SCOPES = [
     "openid",
     "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/photospicker.mediaitems.readonly",
+    PHOTOS_SCOPE,
 ]
 
 # Stop waiting for the Google redirect if the user abandons the sign-in page.
@@ -56,6 +62,19 @@ def revoke_credentials(creds: Credentials) -> bool:
     if not token:
         return False
     return revoke_token(token)
+
+
+def has_photos_scope(creds: Credentials) -> bool:
+    """Check whether the user granted the Google Photos scope.
+
+    Google always includes "scope" in the token response; None or empty means no scopes granted.
+    """
+    granted = creds.granted_scopes
+    if not granted:
+        return False
+    if isinstance(granted, str):
+        return PHOTOS_SCOPE in granted.split()
+    return PHOTOS_SCOPE in granted
 
 
 def extract_verified_email(creds: Credentials) -> str | None:

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import WSGITimeoutError
 
+from hicpicnunc.google_photos.oauth import SCOPES
 from hicpicnunc.web import session as web_session
 from hicpicnunc.web.routes import auth
 
@@ -180,3 +182,91 @@ def test_sign_in_stores_the_token_and_email(
     assert "verified@gmail.com" in token_file.read_text()
     sid = list(web_session.picker_sessions.keys())[0]
     assert web_session.picker_sessions[sid].email == "verified@gmail.com"
+
+
+def test_sign_in_missing_photos_scope_revokes_and_redirects(
+    client, monkeypatch, tmp_path, data_dir
+) -> None:
+    secrets = tmp_path / "client_secrets.json"
+    secrets.write_text("{}")
+    monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRETS", str(secrets))
+
+    partial_creds = Credentials(
+        token="partial-token",
+        refresh_token="partial-refresh",
+        client_id="client-id",
+        client_secret="client-secret",
+        token_uri="https://oauth2.googleapis.com/token",
+        scopes=list(SCOPES),
+        granted_scopes=["openid", "https://www.googleapis.com/auth/userinfo.email"],
+    )
+
+    revoked: list[Credentials] = []
+    saved: list[Credentials] = []
+    extracted: list[Credentials] = []
+
+    monkeypatch.setattr(auth.GooglePhotosOAuth, "run_local_server", lambda self: partial_creds)
+    monkeypatch.setattr(auth, "revoke_credentials", lambda creds: revoked.append(creds) or True)
+    monkeypatch.setattr(auth, "save_token", lambda creds: saved.append(creds))
+    monkeypatch.setattr(
+        auth, "extract_verified_email", lambda creds: extracted.append(creds) or "user@gmail.com"
+    )
+
+    resp = client.get("/auth")
+
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/"
+    assert len(revoked) == 1
+    assert revoked[0] is partial_creds
+    assert not (data_dir / "credentials" / "google_token.json").exists()
+    assert not saved
+    assert not extracted
+    assert not web_session.picker_sessions
+
+    with client.session_transaction() as sess:
+        assert "user" not in sess
+        assert sess.get("_flashes") == [
+            (
+                "error",
+                "Hic Pic Nunc needs access to Google Photos. Sign in again and tick the Google Photos permission.",
+            )
+        ]
+
+
+def test_sign_in_missing_photos_scope_revoke_failure_still_redirects(
+    client, monkeypatch, tmp_path, data_dir
+) -> None:
+    secrets = tmp_path / "client_secrets.json"
+    secrets.write_text("{}")
+    monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRETS", str(secrets))
+
+    partial_creds = Credentials(
+        token="partial-token",
+        refresh_token="partial-refresh",
+        client_id="client-id",
+        client_secret="client-secret",
+        token_uri="https://oauth2.googleapis.com/token",
+        scopes=list(SCOPES),
+        granted_scopes=["openid"],
+    )
+
+    def raise_revoke(creds):
+        raise RuntimeError("Google revoke unreachable")
+
+    monkeypatch.setattr(auth.GooglePhotosOAuth, "run_local_server", lambda self: partial_creds)
+    monkeypatch.setattr(auth, "revoke_credentials", raise_revoke)
+
+    resp = client.get("/auth")
+
+    assert resp.status_code == 302
+    assert resp.headers["Location"] == "/"
+    assert not (data_dir / "credentials" / "google_token.json").exists()
+    assert not web_session.picker_sessions
+
+    with client.session_transaction() as sess:
+        assert sess.get("_flashes") == [
+            (
+                "error",
+                "Hic Pic Nunc needs access to Google Photos. Sign in again and tick the Google Photos permission.",
+            )
+        ]
