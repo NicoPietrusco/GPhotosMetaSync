@@ -66,7 +66,7 @@ test:
 
 [group('Quality')]
 format:
-    uv run ruff format src/
+    uv run ruff format src/ tests/
 
 [group('Maintenance')]
 clean:

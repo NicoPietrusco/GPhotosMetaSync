@@ -56,6 +56,10 @@ target-version = "py311"
 select = ["E", "F", "I", "N", "W", "B", "Q"]
 ignore = ["E501"]  # Line too long (handled by formatter)
 
+[tool.ty.environment]
+# Check macOS- and Windows-only branches too, not just those of the OS ty runs on.
+python-platform = "all"
+
 [dependency-groups]
 dev = [
     "pyinstaller>=6.0.0",

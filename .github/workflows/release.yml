@@ -30,11 +30,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.11"
+          # A cache written by PR runs must never feed a release build.
+          enable-cache: false
       - name: Install locked build tools
-        run: uv sync --group dev --frozen
+        run: uv sync --group dev --locked
       - name: Check the tag matches the package version
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
