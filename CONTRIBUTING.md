@@ -74,6 +74,8 @@ just typecheck
 just test
 ```
 
+If you change anything under `.github/workflows/`, also run `just lint-workflows`. Pin new actions to a full commit SHA with the version as a comment (`uses: owner/action@<sha> # v1.2.3`), and set `persist-credentials: false` on `actions/checkout`.
+
 You can format the source code with:
 
 ```bash
