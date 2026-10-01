@@ -51,6 +51,11 @@ setup:
 lint:
     uv run ruff check src/ tests/
 
+# Audit GitHub Actions workflows for security issues
+[group('Quality')]
+lint-workflows:
+    uv run zizmor .github/workflows
+
 [group('Quality')]
 typecheck:
     uv run ty check src/

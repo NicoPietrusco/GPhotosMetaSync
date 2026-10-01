@@ -32,3 +32,19 @@ jobs:
         run: uv run ty check src/
       - name: Test
         run: uv run pytest
+
+  workflows:
+    name: audit workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Install locked development tools
+        run: uv sync --group dev --frozen
+      - name: Run zizmor
+        env:
+          # Enables the online audits, such as known-vulnerable actions and impostor commits.
+          GH_TOKEN: ${{ github.token }}
+        run: uv run zizmor --format github .github/workflows
