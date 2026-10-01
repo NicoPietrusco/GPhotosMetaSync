@@ -51,10 +51,10 @@ setup:
 lint:
     uv run ruff check src/ tests/
 
-# Audit GitHub Actions workflows for security issues
+# Audit GitHub Actions workflows and Dependabot config for security issues
 [group('Quality')]
 lint-workflows:
-    uv run zizmor .github/workflows
+    uv run zizmor .github
 
 [group('Quality')]
 typecheck:
