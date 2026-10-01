@@ -26,17 +26,11 @@ jobs:
           enable-cache: true
       - name: Install locked development tools
         run: uv sync --group dev --locked
-      - name: Lint
-        run: uv run ruff check src/ tests/
-      - name: Check formatting
-        run: uv run ruff format --check src/ tests/
-      - name: Type check
-        run: uv run ty check src/
-      - name: Audit workflows
+      - name: Run hooks (lint, format, types, lock file, workflow audit)
         env:
-          # Enables the online audits, such as known-vulnerable actions and impostor commits.
+          # Enables zizmor's online audits, such as known-vulnerable actions and impostor commits.
           GH_TOKEN: ${{ github.token }}
-        run: uv run zizmor --format github .github
+        run: uv run --frozen prek run --all-files --show-diff-on-failure
 
   tests:
     name: tests (${{ matrix.os }})

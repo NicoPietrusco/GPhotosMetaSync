@@ -47,6 +47,16 @@ setup:
     uv sync --group dev
     @echo "Done."
 
+# Install the git hooks, so every commit runs the `just check` hooks on its staged files
+[group('Setup')]
+hooks:
+    uv run --frozen prek install
+
+# Run every hook on all files, as CI does: lint, format, types, lock file, workflow audit
+[group('Quality')]
+check:
+    uv run --frozen prek run --all-files
+
 [group('Quality')]
 lint:
     uv run ruff check src/ tests/
