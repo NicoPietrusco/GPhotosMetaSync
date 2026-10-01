@@ -4,8 +4,7 @@
 
 ## Test plan
 
-* [ ] I ran `just lint`
-* [ ] I ran `just typecheck`
+* [ ] I ran `just check` (lint, format, types, lock file, workflow audit)
 * [ ] I ran `just test`
 * [ ] I tested the affected functionality manually, if applicable
 

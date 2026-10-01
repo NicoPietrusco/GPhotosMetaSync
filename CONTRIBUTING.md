@@ -29,6 +29,14 @@ just setup
 
 This creates a Python 3.11 virtual environment and installs the development dependencies.
 
+Then install the git hooks once:
+
+```bash
+just hooks
+```
+
+From then on, every commit runs the checks below on the files it changes: formatting, final newlines, YAML and TOML syntax, ruff, ty, the `uv.lock` check and the workflow audit. Hooks that fix files themselves, such as the formatter, stop the commit so you can review the changes and stage them again.
+
 ### Google Photos OAuth setup
 
 When running Hic Pic Nunc from source, you need your own Google OAuth Desktop client. The release OAuth client is not shared for development.
@@ -69,12 +77,13 @@ src/hicpicnunc/
 Before opening a pull request, run the project's quality checks:
 
 ```bash
-just lint
-just typecheck
+just check
 just test
 ```
 
-If you change anything under `.github/`, also run `just lint-workflows`. Pin new actions to a full commit SHA with the version as a comment (`uses: owner/action@<sha> # v1.2.3`), and set `persist-credentials: false` on `actions/checkout`.
+`just check` runs every hook on all files, exactly as the CI `checks` job does. The hooks are defined in [`.pre-commit-config.yaml`](.pre-commit-config.yaml) and run with [prek](https://github.com/j178/prek). Tools such as ruff, ty and zizmor come from `uv.lock`, so the versions are the same locally and in CI. `just lint`, `just typecheck` and `just lint-workflows` still run single tools.
+
+If you change anything under `.github/`, pin new actions to a full commit SHA with the version as a comment (`uses: owner/action@<sha> # v1.2.3`), and set `persist-credentials: false` on `actions/checkout`.
 
 You can format the source code with:
 
