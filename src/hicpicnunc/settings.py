@@ -2,6 +2,7 @@
 Application settings: paths, limits and environment overrides.
 """
 
+import contextlib
 import os
 import secrets
 import sys
@@ -38,10 +39,8 @@ class Settings:
             key_path.parent.mkdir(parents=True, exist_ok=True)
             key = secrets.token_urlsafe(32)
             key_path.write_text(key, encoding="utf-8")
-            try:
+            with contextlib.suppress(OSError):
                 key_path.chmod(0o600)
-            except OSError:
-                pass
             return key
         except OSError:
             return secrets.token_urlsafe(32)
