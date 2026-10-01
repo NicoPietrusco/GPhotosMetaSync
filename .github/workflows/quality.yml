@@ -47,4 +47,4 @@ jobs:
         env:
           # Enables the online audits, such as known-vulnerable actions and impostor commits.
           GH_TOKEN: ${{ github.token }}
-        run: uv run zizmor --format github .github/workflows
+        run: uv run zizmor --format github .github
