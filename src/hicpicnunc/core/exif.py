@@ -11,7 +11,7 @@ import re
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import piexif
 from PIL import Image
@@ -87,7 +87,7 @@ def _deserialize_tag_value(val: Any) -> Any:
     return val
 
 
-def convert_to_degrees(value: Any) -> Optional[float]:
+def convert_to_degrees(value: Any) -> float | None:
     """Convert GPS coordinates from DMS to decimal degrees."""
     try:
         if not value:
@@ -111,7 +111,7 @@ def convert_to_degrees(value: Any) -> Optional[float]:
         return None
 
 
-def extract_gps_data_from_named_gps(gps_named: Dict[str, Any]) -> Dict[str, Any]:
+def extract_gps_data_from_named_gps(gps_named: dict[str, Any]) -> dict[str, Any]:
     """Add decimal lat/lon to a GPS IFD dict keyed by piexif GPS tag names."""
     gps_dict = dict(gps_named)
     lat = lon = None
@@ -215,9 +215,12 @@ def filter_nested_exif(
     out = {k: {} for k in IFD_CLASS_MAP}
     for ifd_hint, tag_name in specs_flat:
         if ifd_hint:
-            if ifd_hint in nested and tag_name in nested[ifd_hint]:
-                if not excluded(ifd_hint, tag_name):
-                    out.setdefault(ifd_hint, {})[tag_name] = nested[ifd_hint][tag_name]
+            if (
+                ifd_hint in nested
+                and tag_name in nested[ifd_hint]
+                and not excluded(ifd_hint, tag_name)
+            ):
+                out.setdefault(ifd_hint, {})[tag_name] = nested[ifd_hint][tag_name]
             continue
         for ifd_key, tags in nested.items():
             if tag_name in tags and not excluded(ifd_key, tag_name):
