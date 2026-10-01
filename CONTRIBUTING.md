@@ -83,6 +83,8 @@ just test
 
 `just check` runs every hook on all files, exactly as the CI `checks` job does. The hooks are defined in [`.pre-commit-config.yaml`](.pre-commit-config.yaml) and run with [prek](https://github.com/j178/prek). Tools such as ruff, ty and zizmor come from `uv.lock`, so the versions are the same locally and in CI. `just lint`, `just typecheck` and `just lint-workflows` still run single tools.
 
+CI also measures test coverage and fails if it drops below the `fail_under` threshold in `pyproject.toml`. Run `just coverage` to see the same report locally, with an HTML version in `htmlcov/`. If your change adds code, add tests for it rather than lowering the threshold.
+
 If you change anything under `.github/`, pin new actions to a full commit SHA with the version as a comment (`uses: owner/action@<sha> # v1.2.3`), and set `persist-credentials: false` on `actions/checkout`.
 
 You can format the source code with:

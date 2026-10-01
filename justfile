@@ -74,6 +74,11 @@ typecheck:
 test:
     uv run pytest
 
+# Run the tests with coverage, as CI does, and write an HTML report to htmlcov/
+[group('Quality')]
+coverage:
+    uv run pytest --cov --cov-report=term-missing --cov-report=html
+
 [group('Quality')]
 format:
     uv run ruff format src/ tests/

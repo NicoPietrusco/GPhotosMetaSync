@@ -49,5 +49,6 @@ jobs:
           enable-cache: true
       - name: Install locked development tools
         run: uv sync --group dev --locked
-      - name: Test
-        run: uv run pytest
+      - name: Test with coverage
+        # Fails below fail_under in pyproject.toml.
+        run: uv run --frozen pytest --cov
