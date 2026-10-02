@@ -110,7 +110,17 @@ just package
 | `tests/` | Mirrors `src/hicpicnunc/`: one `*_test.py` per module |
 | `packaging/` | PyInstaller spec for the desktop releases |
 
-The release workflow builds Apple Silicon macOS, Intel macOS, and Windows artifacts when a `v*` tag is pushed.
+### Releases
+
+Releases are automated with [release-please](https://github.com/googleapis/release-please), based on the Conventional Commit titles of the PRs merged into `main`:
+
+1. After each merge, release-please opens or updates a release PR titled `chore(main): release X.Y.Z`. It bumps `version` in `pyproject.toml` and `uv.lock` and adds the new `feat:` and `fix:` changes to `CHANGELOG.md`. A `feat:` bumps the minor version and a `fix:` the patch version.
+2. Merging the release PR creates the `vX.Y.Z` tag and the GitHub release.
+3. The same run builds the Apple Silicon macOS, Intel macOS, and Windows apps, smoke-tests them, and attaches them to the release.
+
+To build the apps without publishing them, or to attach them again to an existing release, run the **Release desktop apps** workflow by hand.
+
+release-please runs as a GitHub App, so the CI checks start on its release PR. The App's client ID is stored in the `RELEASE_APP_CLIENT_ID` repository variable and its private key in the `RELEASE_APP_PRIVATE_KEY` secret.
 
 ## Support The Project
 
