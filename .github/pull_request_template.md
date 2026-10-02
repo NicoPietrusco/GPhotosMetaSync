@@ -1,3 +1,8 @@
+<!--
+PR title: use a Conventional Commit, for example `feat(auth): add sign out` or `fix: keep capture dates for HEIC photos`.
+PRs are squash-merged, so the title becomes the commit message on main. See CONTRIBUTING.md.
+-->
+
 ## Summary
 
 <!-- What does this PR change? Why is the change needed? -->

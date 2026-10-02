@@ -107,9 +107,25 @@ CI runs on Ubuntu, Windows, and macOS, so changes should work across all support
 * Keep commits small and use clear commit messages.
 * Do not push directly to `main`.
 * Open a pull request when your changes are ready for review.
-* Pull requests are rebase-merged.
+* Pull requests are squash-merged: each one becomes a single commit on `main`, with the PR title as its message and the PR description as its body.
 
 Before submitting a pull request, make sure the relevant checks pass locally.
+
+### Pull request titles
+
+Because the PR title becomes the commit message on `main`, it must follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`, where the scope is optional. The `pr-title` check enforces it and runs again when you edit the title, so a failing title can be fixed without pushing new commits.
+
+Allowed types: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`, `ci`, `build`, `perf`, `style` and `revert`.
+
+| Title | Result |
+| --- | --- |
+| `feat(auth): add sign out` | passes |
+| `fix: keep capture dates for HEIC photos` | passes |
+| `docs: explain the OAuth setup` | passes |
+| `Feat/signout switch account` | fails: no `type:` prefix |
+| `feature: add sign out` | fails: unknown type |
+
+Commits inside your branch don't need to follow the format, since they are squashed away.
 
 ## Privacy
 
