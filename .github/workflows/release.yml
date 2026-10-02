@@ -1,8 +1,16 @@
 name: Release desktop apps
 
 # Called by release-please.yml once it has created the release. Run it by hand to build the
-# apps without publishing them, or to attach them again to an existing release.
+# apps without publishing them, or to attach them again to an existing release. PRs that can
+# change the frozen app build and smoke-test it without publishing anything.
 on:
+  pull_request:
+    paths:
+      - uv.lock
+      - pyproject.toml
+      - packaging/**
+      - scripts/smoke_test_bundle.py
+      - .github/workflows/release.yml
   workflow_call:
     inputs:
       tag:
@@ -21,6 +29,11 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # A new push to a PR supersedes the previous build; release builds always finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -61,11 +74,14 @@ jobs:
             exit 1
           fi
       - name: Run quality checks
+        # On PRs, quality.yml already runs them.
+        if: github.event_name != 'pull_request'
         run: |
           uv run ruff check src/ tests/
           uv run ty check src/
           uv run pytest
       - name: Add the release OAuth client
+        if: github.event_name != 'pull_request'
         shell: bash
         env:
           GOOGLE_OAUTH_CLIENT_JSON: ${{ secrets.GOOGLE_OAUTH_CLIENT_JSON }}
@@ -73,6 +89,17 @@ jobs:
           test -n "$GOOGLE_OAUTH_CLIENT_JSON"
           mkdir -p credentials
           printf '%s' "$GOOGLE_OAUTH_CLIENT_JSON" > credentials/client_secrets.json
+      - name: Add a placeholder OAuth client
+        # PRs from forks and Dependabot can't read the secret, and the smoke test doesn't sign in.
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          mkdir -p credentials
+          cat > credentials/client_secrets.json <<'JSON'
+          {"installed": {"client_id": "placeholder.apps.googleusercontent.com", "client_secret": "placeholder",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth", "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": ["http://localhost"]}}
+          JSON
       - name: Build application
         run: uv run pyinstaller --noconfirm --clean packaging/pyinstaller.spec
       - name: Smoke-test the bundle
@@ -88,6 +115,7 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path 'dist\Hic Pic Nunc\*' -DestinationPath 'dist\HicPicNunc-Windows-x64.zip'
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: github.event_name != 'pull_request'
         with:
           name: ${{ matrix.name }}
           path: |
